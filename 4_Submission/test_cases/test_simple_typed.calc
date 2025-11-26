@@ -1,0 +1,35 @@
+# Simple typed syntax test
+
+# Basic types
+int x = 10
+int y = 20
+int result = x + y
+
+print "Result:"
+print result
+
+# Float type
+float decimal = 3.14
+print "Decimal:"
+print decimal
+
+# String type
+string text = "Hello World"
+print text
+
+# Boolean
+boolean is_true = true
+print is_true
+
+# Array operations
+array nums = [1, 2, 3, 4, 5]
+print "Array:"
+print nums
+
+# Conditional
+int age = 25
+if age > 18:
+    print "Adult"
+end
+
+print "Done"

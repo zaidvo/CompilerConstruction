@@ -1,0 +1,35 @@
+# CalcScript++ Matrix Operations Test (TYPED SYNTAX - NO BUILT-IN FUNCTIONS)
+# Matrix operations using OPERATORS only
+
+print "=== MATRIX OPERATIONS TEST ==="
+
+# Define two 2x2 matrices
+matrix M1 = [[1, 2], [3, 4]]
+matrix M2 = [[5, 6], [7, 8]]
+
+print "Matrix M1: [[1,2], [3,4]]"
+print "Matrix M2: [[5,6], [7,8]]"
+
+print ""
+print "=== Matrix Addition with + ==="
+matrix M_add = M1 + M2
+print M_add
+
+print ""
+print "=== Matrix Subtraction with - ==="
+matrix M_sub = M1 - M2
+print M_sub
+
+print ""
+print "=== Matrix Multiplication with * ==="
+matrix M_mul = M1 * M2
+print M_mul
+
+print ""
+print "=== Matrix Transpose with ^t ==="
+matrix M_trans = M1 ^ t
+print M_trans
+
+print ""
+print "=== COMPLETE! ==="
+

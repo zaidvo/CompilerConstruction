@@ -1,0 +1,33 @@
+# Test Program 1: Basic Arithmetic and Variables
+# This program demonstrates variable declaration, arithmetic operations,
+# and operator precedence (TYPED SYNTAX)
+
+# Declare variables with types
+int length = 10
+int width = 2
+
+# Calculate area
+int area = length * width
+print "Area of rectangle:"
+print area
+
+# Calculate perimeter
+int perimeter = 2 * (length + width)
+print "Perimeter of rectangle:"
+print perimeter
+
+# Demonstrate operator precedence
+int result = 2 + 3 * 4
+print "2 + 3 * 4 ="
+print result
+
+# Demonstrate exponentiation
+int power = 2 ^ 8
+print "2 raised to power 8:"
+print power
+
+# More complex expression
+int complex = (10 + 5) * 2 - 8 / 4
+print "Complex expression result:"
+print complex
+

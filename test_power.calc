@@ -1,0 +1,7 @@
+function power(base, exponent):
+    let result = base ^ exponent
+    return result
+end
+
+let result = power(2, 3)
+print result

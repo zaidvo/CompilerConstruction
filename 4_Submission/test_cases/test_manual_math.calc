@@ -1,0 +1,51 @@
+# Test simple array and arithmetic operations (NO BUILT-IN FUNCTIONS)
+
+# Test simple arithmetic
+int num = 16
+print "Number:"
+print num
+
+# Manual calculation
+int result = num + 4
+print "Number + 4:"
+print result
+
+# Test array operations
+array numbers = [1, 2, 3, 4, 5]
+
+# Manual sum
+int total = 0
+int i = 0
+repeat 5 times:
+    total = total + numbers[i]
+    i = i + 1
+end
+print "sum([1,2,3,4,5]):"
+print total
+
+# Manual max
+int maximum = numbers[0]
+int j = 1
+repeat 4 times:
+    if numbers[j] > maximum:
+        maximum = numbers[j]
+    end
+    j = j + 1
+end
+print "max:"
+print maximum
+
+# Manual min
+int minimum = numbers[0]
+int k = 1
+repeat 4 times:
+    if numbers[k] < minimum:
+        minimum = numbers[k]
+    end
+    k = k + 1
+end
+print "min:"
+print minimum
+
+print "All manual calculations completed!"
+

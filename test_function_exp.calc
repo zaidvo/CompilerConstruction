@@ -1,0 +1,14 @@
+function test(a, b):
+    print "a:"
+    print a
+    print "b:"
+    print b
+    let result = a ^ b
+    print "result:"
+    print result
+    return result
+end
+
+let answer = test(2, 3)
+print "Final:"
+print answer

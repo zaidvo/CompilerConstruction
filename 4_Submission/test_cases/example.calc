@@ -1,0 +1,58 @@
+# Simple CalcScript++ Example Program (TYPED SYNTAX)
+# This program demonstrates basic features of the language
+
+print "=== CalcScript++ Demo ==="
+print ""
+
+# Variables and arithmetic with explicit types
+int x = 10
+int y = 20
+int total = x + y
+
+print "Basic Arithmetic:"
+print "x = 10, y = 20"
+print "x + y ="
+print total
+
+print ""
+
+# Conditionals
+print "Conditional Example:"
+if total > 25:
+    print "Sum is greater than 25"
+else:
+    print "Sum is 25 or less"
+end
+
+print ""
+
+# Loop
+print "Loop Example (1 to 5):"
+int counter = 1
+repeat 5 times:
+    print counter
+    counter = counter + 1
+end
+
+print ""
+
+# More arithmetic
+int a = 5
+int b = 3
+int product = a * b
+print "Multiplication Example:"
+print "5 * 3 ="
+print product
+
+print ""
+
+# Power operation
+int base = 2
+int exponent = 5
+int power_result = base ^ exponent
+print "Power Example:"
+print "2 ^ 5 ="
+print power_result
+
+print ""
+print "=== Demo Complete ==="

@@ -1,0 +1,99 @@
+# Test Program 4: Arrays (TYPED SYNTAX - NO BUILT-IN FUNCTIONS)
+# This program demonstrates array operations without built-in functions
+
+# Create an array of numbers
+array numbers = [101, 25, 5, 30, 15, 20]
+
+print "Array created with 6 elements"
+
+# Access individual elements
+int first = numbers[0]
+int third = numbers[2]
+print "First element:"
+print first
+print "Third element:"
+print third
+
+# Modify array element
+numbers[2] = 50
+print "Modified third element to 50"
+
+# Manual sum (no built-in)
+int total = 0
+int i = 0
+repeat 6 times:
+    total = total + numbers[i]
+    i = i + 1
+end
+print "Sum of all elements:"
+print total
+
+# Manual max (no built-in)
+int maximum = numbers[0]
+int j = 1
+repeat 5 times:
+    if numbers[j] > maximum:
+        maximum = numbers[j]
+    end
+    j = j + 1
+end
+print "Maximum element:"
+print maximum
+
+# Manual min (no built-in)
+int minimum = numbers[0]
+int k = 1
+repeat 5 times:
+    if numbers[k] < minimum:
+        minimum = numbers[k]
+    end
+    k = k + 1
+end
+print "Minimum element:"
+print minimum
+
+# Calculate average
+int count = 6
+int average = total / count
+print "Average:"
+print average
+
+# Create another array
+array scores = [85, 92, 78, 95, 88]
+print "Test scores array created"
+
+# Manual sum for scores
+int total_score = 0
+int m = 0
+repeat 5 times:
+    total_score = total_score + scores[m]
+    m = m + 1
+end
+print "Total score:"
+print total_score
+
+# Manual max for scores
+int highest = scores[0]
+int n = 1
+repeat 4 times:
+    if scores[n] > highest:
+        highest = scores[n]
+    end
+    n = n + 1
+end
+print "Highest score:"
+print highest
+
+# Manual min for scores
+int lowest = scores[0]
+int p = 1
+repeat 4 times:
+    if scores[p] < lowest:
+        lowest = scores[p]
+    end
+    p = p + 1
+end
+print "Lowest score:"
+print lowest
+
+
