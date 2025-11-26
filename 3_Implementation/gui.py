@@ -404,49 +404,79 @@ end
             # Phase 3: Semantic Analysis
             analyzer = SemanticAnalyzer()
             analyzer.analyze(self.ast)
-            self.semantic_text.insert('1.0', "[OK] Semantic analysis passed\n\n")
-            self.semantic_text.insert(tk.END, "Symbol Table:\n")
-            self.semantic_text.insert(tk.END, "=" * 70 + "\n")
-            self.semantic_text.insert(tk.END, f"{'Name':<20} {'Type':<15} {'Value Type':<15} {'Scope'}\n")
-            self.semantic_text.insert(tk.END, "-" * 70 + "\n")
             
-            # Separate built-in functions from user-defined symbols
-            builtins = {k: v for k, v in analyzer.global_scope.symbols.items() if v['type'] == 'function' and k in ['sum', 'max', 'min', 'mean', 'median', 'stdev', 'variance', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sinh', 'cosh', 'tanh', 'exp', 'ln', 'lg', 'log', 'log10', 'log2', 'sqrt', 'cbrt', 'floor', 'ceil', 'round', 'abs', 'factorial', 'gcd', 'lcm', 'pi', 'e', 'radians', 'degrees', 'matrix_det', 'matrix_trace']}
-            user_defined = {k: v for k, v in analyzer.global_scope.symbols.items() if k not in builtins}
+            # Success message
+            self.semantic_text.insert('1.0', "✅ [OK] Semantic analysis passed\n\n")
             
-            # Show user-defined symbols first
-            if user_defined:
-                for name, info in user_defined.items():
-                    sym_type = info.get('type', 'unknown')
+            # Use the all_symbols list from analyzer
+            all_symbols = analyzer.all_symbols
+            
+            # Display Symbol Table
+            self.semantic_text.insert(tk.END, "📊 SYMBOL TABLE\n")
+            self.semantic_text.insert(tk.END, "=" * 120 + "\n")
+            self.semantic_text.insert(tk.END, f"{'Symbol':<15} {'Kind':<12} {'Type':<10} {'Value/Init':<25} {'Scope':<7} {'Line':<6} {'Init':<5} {'Used':<5}\n")
+            self.semantic_text.insert(tk.END, "=" * 120 + "\n")
+            
+            # Separate variables and functions
+            variables = [(n, i) for n, i in all_symbols if i.get('type') in ('variable', 'parameter')]
+            functions = [(n, i) for n, i in all_symbols if i.get('type') == 'function']
+            
+            # Display variables
+            if variables:
+                self.semantic_text.insert(tk.END, "📌 VARIABLES:\n")
+                self.semantic_text.insert(tk.END, "-" * 120 + "\n")
+                for name, info in variables:
+                    kind = info.get('type', 'unknown')
                     val_type = info.get('value_type', 'unknown')
+                    init_val = info.get('init_value', 'null')
                     scope = info.get('scope_level', 0)
-                    self.semantic_text.insert(tk.END, f"{name:<20} {sym_type:<15} {val_type:<15} {scope}\n")
+                    line = info.get('line_number', '-')
+                    is_init = '✓' if info.get('is_initialized', False) else '✗'
+                    is_used = '✓' if info.get('is_used', False) else '✗'
+                    
+                    # Format initialization value
+                    if init_val is None:
+                        init_val = 'null'
+                    elif isinstance(init_val, str) and len(init_val) > 23:
+                        init_val = init_val[:20] + '...'
+                    
+                    self.semantic_text.insert(tk.END, f"{'  ' + name:<15} {kind:<12} {val_type:<10} {str(init_val):<25} {scope:<7} {str(line):<6} {is_init:<5} {is_used:<5}\n")
+                self.semantic_text.insert(tk.END, "\n")
             
-            # Show summary of built-in functions
-            if builtins:
-                self.semantic_text.insert(tk.END, "\n" + "=" * 70 + "\n")
-                self.semantic_text.insert(tk.END, f"Built-in Functions: {len(builtins)} functions available\n")
-                self.semantic_text.insert(tk.END, "-" * 70 + "\n")
-                
-                # Group by category
-                categories = {
-                    'Array': ['sum', 'max', 'min'],
-                    'Statistics': ['mean', 'median', 'stdev', 'variance'],
-                    'Trigonometry': ['sin', 'cos', 'tan', 'asin', 'acos', 'atan'],
-                    'Hyperbolic': ['sinh', 'cosh', 'tanh'],
-                    'Exponential/Log': ['exp', 'ln', 'lg', 'log', 'log10', 'log2'],
-                    'Roots': ['sqrt', 'cbrt'],
-                    'Rounding': ['floor', 'ceil', 'round', 'abs'],
-                    'Number Theory': ['factorial', 'gcd', 'lcm'],
-                    'Constants': ['pi', 'e'],
-                    'Angle Mode': ['radians', 'degrees'],
-                    'Matrix': ['matrix_det', 'matrix_trace']
-                }
-                
-                for category, funcs in categories.items():
-                    available = [f for f in funcs if f in builtins]
-                    if available:
-                        self.semantic_text.insert(tk.END, f"{category}: {', '.join(available)}\n")
+            # Display functions
+            if functions:
+                self.semantic_text.insert(tk.END, "🔧 FUNCTIONS:\n")
+                self.semantic_text.insert(tk.END, "-" * 120 + "\n")
+                for name, info in functions:
+                    kind = info.get('type', 'unknown')
+                    return_type = info.get('return_type', info.get('value_type', 'void'))
+                    scope = info.get('scope_level', 0)
+                    line = info.get('line_number', '-')
+                    
+                    self.semantic_text.insert(tk.END, f"{'  ' + name:<15} {kind:<12} {return_type:<10} {'-':<25} {scope:<7} {str(line):<6} {'✓':<5} {'✓':<5}\n")
+                self.semantic_text.insert(tk.END, "\n")
+            
+            self.semantic_text.insert(tk.END, "=" * 120 + "\n")
+            
+            # Type Checking Summary
+            self.semantic_text.insert(tk.END, "\n📋 TYPE CHECKING SUMMARY:\n")
+            self.semantic_text.insert(tk.END, "-" * 120 + "\n")
+            
+            # Count operations
+            total_vars = len(variables)
+            total_funcs = len(functions)
+            
+            self.semantic_text.insert(tk.END, f"✓ Variables declared: {total_vars}\n")
+            self.semantic_text.insert(tk.END, f"✓ Functions defined: {total_funcs}\n")
+            self.semantic_text.insert(tk.END, f"✓ All type checks passed\n")
+            self.semantic_text.insert(tk.END, f"✓ All scope validations passed\n")
+            
+            # Check for unused variables (warnings)
+            unused_vars = [n for n, i in variables if not i.get('is_used', False)]
+            if unused_vars:
+                self.semantic_text.insert(tk.END, f"\n⚠ WARNING: {len(unused_vars)} unused variable(s): {', '.join(unused_vars)}\n")
+            
+            self.semantic_text.insert(tk.END, "\n✅ No semantic errors found.\n")
             
             # Phase 4: IR Generation
             ir_gen = IRGenerator()
@@ -505,49 +535,79 @@ end
             # Phase 3: Semantic Analysis
             analyzer = SemanticAnalyzer()
             analyzer.analyze(self.ast)
-            self.semantic_text.insert('1.0', "[OK] Semantic analysis passed\n\n")
-            self.semantic_text.insert(tk.END, "Symbol Table:\n")
-            self.semantic_text.insert(tk.END, "=" * 70 + "\n")
-            self.semantic_text.insert(tk.END, f"{'Name':<20} {'Type':<15} {'Value Type':<15} {'Scope'}\n")
-            self.semantic_text.insert(tk.END, "-" * 70 + "\n")
             
-            # Separate built-in functions from user-defined symbols
-            builtins = {k: v for k, v in analyzer.global_scope.symbols.items() if v['type'] == 'function' and k in ['sum', 'max', 'min', 'mean', 'median', 'stdev', 'variance', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sinh', 'cosh', 'tanh', 'exp', 'ln', 'lg', 'log', 'log10', 'log2', 'sqrt', 'cbrt', 'floor', 'ceil', 'round', 'abs', 'factorial', 'gcd', 'lcm', 'pi', 'e', 'radians', 'degrees', 'matrix_det', 'matrix_trace']}
-            user_defined = {k: v for k, v in analyzer.global_scope.symbols.items() if k not in builtins}
+            # Success message
+            self.semantic_text.insert('1.0', "✅ [OK] Semantic analysis passed\n\n")
             
-            # Show user-defined symbols first
-            if user_defined:
-                for name, info in user_defined.items():
-                    sym_type = info.get('type', 'unknown')
+            # Use the all_symbols list from analyzer
+            all_symbols = analyzer.all_symbols
+            
+            # Display Symbol Table
+            self.semantic_text.insert(tk.END, "📊 SYMBOL TABLE\n")
+            self.semantic_text.insert(tk.END, "=" * 120 + "\n")
+            self.semantic_text.insert(tk.END, f"{'Symbol':<15} {'Kind':<12} {'Type':<10} {'Value/Init':<25} {'Scope':<7} {'Line':<6} {'Init':<5} {'Used':<5}\n")
+            self.semantic_text.insert(tk.END, "=" * 120 + "\n")
+            
+            # Separate variables and functions
+            variables = [(n, i) for n, i in all_symbols if i.get('type') in ('variable', 'parameter')]
+            functions = [(n, i) for n, i in all_symbols if i.get('type') == 'function']
+            
+            # Display variables
+            if variables:
+                self.semantic_text.insert(tk.END, "📌 VARIABLES:\n")
+                self.semantic_text.insert(tk.END, "-" * 120 + "\n")
+                for name, info in variables:
+                    kind = info.get('type', 'unknown')
                     val_type = info.get('value_type', 'unknown')
+                    init_val = info.get('init_value', 'null')
                     scope = info.get('scope_level', 0)
-                    self.semantic_text.insert(tk.END, f"{name:<20} {sym_type:<15} {val_type:<15} {scope}\n")
+                    line = info.get('line_number', '-')
+                    is_init = '✓' if info.get('is_initialized', False) else '✗'
+                    is_used = '✓' if info.get('is_used', False) else '✗'
+                    
+                    # Format initialization value
+                    if init_val is None:
+                        init_val = 'null'
+                    elif isinstance(init_val, str) and len(init_val) > 23:
+                        init_val = init_val[:20] + '...'
+                    
+                    self.semantic_text.insert(tk.END, f"{'  ' + name:<15} {kind:<12} {val_type:<10} {str(init_val):<25} {scope:<7} {str(line):<6} {is_init:<5} {is_used:<5}\n")
+                self.semantic_text.insert(tk.END, "\n")
             
-            # Show summary of built-in functions
-            if builtins:
-                self.semantic_text.insert(tk.END, "\n" + "=" * 70 + "\n")
-                self.semantic_text.insert(tk.END, f"Built-in Functions: {len(builtins)} functions available\n")
-                self.semantic_text.insert(tk.END, "-" * 70 + "\n")
-                
-                # Group by category
-                categories = {
-                    'Array': ['sum', 'max', 'min'],
-                    'Statistics': ['mean', 'median', 'stdev', 'variance'],
-                    'Trigonometry': ['sin', 'cos', 'tan', 'asin', 'acos', 'atan'],
-                    'Hyperbolic': ['sinh', 'cosh', 'tanh'],
-                    'Exponential/Log': ['exp', 'ln', 'lg', 'log', 'log10', 'log2'],
-                    'Roots': ['sqrt', 'cbrt'],
-                    'Rounding': ['floor', 'ceil', 'round', 'abs'],
-                    'Number Theory': ['factorial', 'gcd', 'lcm'],
-                    'Constants': ['pi', 'e'],
-                    'Angle Mode': ['radians', 'degrees'],
-                    'Matrix': ['matrix_det', 'matrix_trace']
-                }
-                
-                for category, funcs in categories.items():
-                    available = [f for f in funcs if f in builtins]
-                    if available:
-                        self.semantic_text.insert(tk.END, f"{category}: {', '.join(available)}\n")
+            # Display functions
+            if functions:
+                self.semantic_text.insert(tk.END, "🔧 FUNCTIONS:\n")
+                self.semantic_text.insert(tk.END, "-" * 120 + "\n")
+                for name, info in functions:
+                    kind = info.get('type', 'unknown')
+                    return_type = info.get('return_type', info.get('value_type', 'void'))
+                    scope = info.get('scope_level', 0)
+                    line = info.get('line_number', '-')
+                    
+                    self.semantic_text.insert(tk.END, f"{'  ' + name:<15} {kind:<12} {return_type:<10} {'-':<25} {scope:<7} {str(line):<6} {'✓':<5} {'✓':<5}\n")
+                self.semantic_text.insert(tk.END, "\n")
+            
+            self.semantic_text.insert(tk.END, "=" * 120 + "\n")
+            
+            # Type Checking Summary
+            self.semantic_text.insert(tk.END, "\n📋 TYPE CHECKING SUMMARY:\n")
+            self.semantic_text.insert(tk.END, "-" * 120 + "\n")
+            
+            # Count operations
+            total_vars = len(variables)
+            total_funcs = len(functions)
+            
+            self.semantic_text.insert(tk.END, f"✓ Variables declared: {total_vars}\n")
+            self.semantic_text.insert(tk.END, f"✓ Functions defined: {total_funcs}\n")
+            self.semantic_text.insert(tk.END, f"✓ All type checks passed\n")
+            self.semantic_text.insert(tk.END, f"✓ All scope validations passed\n")
+            
+            # Check for unused variables (warnings)
+            unused_vars = [n for n, i in variables if not i.get('is_used', False)]
+            if unused_vars:
+                self.semantic_text.insert(tk.END, f"\n⚠ WARNING: {len(unused_vars)} unused variable(s): {', '.join(unused_vars)}\n")
+            
+            self.semantic_text.insert(tk.END, "\n✅ No semantic errors found.\n")
             
             # Phase 4: IR Generation
             ir_gen = IRGenerator()
@@ -569,67 +629,244 @@ end
             messagebox.showerror("Compilation Error", error_msg)
     
     def show_tokens(self):
-        """Display tokens"""
+        """Display tokens with enhanced visualization"""
         if self.tokens:
             self.tokens_text.delete('1.0', tk.END)
-            self.tokens_text.insert('1.0', "Tokens Generated:\n")
-            self.tokens_text.insert(tk.END, "=" * 60 + "\n\n")
+            
+            # Title
+            self.tokens_text.insert('1.0', "PHASE 1: LEXICAL ANALYSIS\n")
+            self.tokens_text.insert(tk.END, "=" * 70 + "\n\n")
+            
+            # Group tokens by type
+            token_groups = {}
             for token in self.tokens:
                 if token.type.name != 'EOF':
-                    self.tokens_text.insert(tk.END, f"{token}\n")
+                    if token.type.name not in token_groups:
+                        token_groups[token.type.name] = []
+                    token_groups[token.type.name].append(token)
+            
+            # Summary statistics
+            total_tokens = sum(len(tokens) for tokens in token_groups.values())
+            self.tokens_text.insert(tk.END, f"Total Tokens: {total_tokens}\n")
+            self.tokens_text.insert(tk.END, f"Token Types: {len(token_groups)}\n")
+            self.tokens_text.insert(tk.END, "\n" + "-" * 70 + "\n\n")
+            
+            # Display by category
+            categories = {
+                'Keywords': ['INT', 'LONG', 'FLOAT', 'STRING_TYPE', 'BOOLEAN', 'ARRAY', 'MATRIX',
+                           'IF', 'ELSE', 'WHILE', 'REPEAT', 'TIMES', 'FUNCTION', 'RETURN', 'END',
+                           'PRINT', 'INPUT', 'BREAK', 'CONTINUE', 'TRUE', 'FALSE'],
+                'Identifiers': ['IDENTIFIER'],
+                'Literals': ['NUMBER', 'STRING'],
+                'Operators': ['PLUS', 'MINUS', 'MULTIPLY', 'DIVIDE', 'MODULO', 'POWER',
+                            'GT', 'LT', 'GTE', 'LTE', 'EQ', 'NEQ', 'AND', 'OR', 'NOT'],
+                'Delimiters': ['LPAREN', 'RPAREN', 'LBRACKET', 'RBRACKET', 'COMMA', 'COLON', 'ASSIGN'],
+                'Whitespace': ['NEWLINE']
+            }
+            
+            for category, types in categories.items():
+                category_tokens = []
+                for ttype in types:
+                    if ttype in token_groups:
+                        category_tokens.extend(token_groups[ttype])
+                
+                if category_tokens:
+                    self.tokens_text.insert(tk.END, f"\u25ba {category} ({len(category_tokens)})\n")
+                    self.tokens_text.insert(tk.END, "-" * 70 + "\n")
+                    
+                    for token in category_tokens[:20]:  # Limit display
+                        value_str = f" = '{token.value}'" if token.value else ""
+                        self.tokens_text.insert(tk.END, 
+                            f"  [{token.line:2d}:{token.column:2d}] {token.type.name:<15}{value_str}\n")
+                    
+                    if len(category_tokens) > 20:
+                        self.tokens_text.insert(tk.END, f"  ... and {len(category_tokens) - 20} more\n")
+                    
+                    self.tokens_text.insert(tk.END, "\n")
     
     def show_ast(self):
-        """Display AST"""
+        """Display AST with tree visualization"""
         if self.ast:
             self.ast_text.delete('1.0', tk.END)
-            self.ast_text.insert('1.0', "Abstract Syntax Tree:\n")
-            self.ast_text.insert(tk.END, "=" * 60 + "\n\n")
-            self.print_ast(self.ast, 0)
+            
+            # Title
+            self.ast_text.insert('1.0', "PHASE 2: SYNTAX ANALYSIS\n")
+            self.ast_text.insert(tk.END, "=" * 70 + "\n\n")
+            self.ast_text.insert(tk.END, "Abstract Syntax Tree (AST):\n\n")
+            
+            # Count nodes
+            node_count = self.count_ast_nodes(self.ast)
+            self.ast_text.insert(tk.END, f"Total Nodes: {node_count}\n")
+            self.ast_text.insert(tk.END, "\n" + "-" * 70 + "\n\n")
+            
+            # Print tree structure
+            self.print_ast_tree(self.ast, "", True, True)
     
-    def print_ast(self, node, indent):
-        """Recursively print AST"""
-        prefix = "  " * indent
-        node_name = node.__class__.__name__
-        self.ast_text.insert(tk.END, f"{prefix}{node_name}\n")
-        
+    def count_ast_nodes(self, node, count=0):
+        """Count total AST nodes"""
+        if node is None:
+            return count
+        count += 1
         if hasattr(node, '__dict__'):
             for key, value in node.__dict__.items():
                 if isinstance(value, list):
-                    if value and hasattr(value[0], '__class__'):
-                        self.ast_text.insert(tk.END, f"{prefix}  {key}:\n")
-                        for item in value:
-                            self.print_ast(item, indent + 2)
+                    for item in value:
+                        if hasattr(item, '__class__') and 'Node' in item.__class__.__name__:
+                            count = self.count_ast_nodes(item, count)
                 elif hasattr(value, '__class__') and 'Node' in value.__class__.__name__:
-                    self.ast_text.insert(tk.END, f"{prefix}  {key}:\n")
-                    self.print_ast(value, indent + 2)
+                    count = self.count_ast_nodes(value, count)
+        return count
+    
+    def print_ast_tree(self, node, prefix, is_last, is_root=False):
+        """Print AST in tree structure with box-drawing characters"""
+        if node is None:
+            return
+        
+        # Draw the current node
+        if is_root:
+            connector = ""
+            node_prefix = ""
+        else:
+            connector = "└── " if is_last else "├── "
+            node_prefix = prefix
+        
+        node_name = node.__class__.__name__
+        
+        # Add node details
+        details = ""
+        if hasattr(node, 'value'):
+            details = f" [{node.value}]"
+        elif hasattr(node, 'name'):
+            details = f" ({node.name})"
+        elif hasattr(node, 'operator'):
+            details = f" '{node.operator}'"
+        elif hasattr(node, 'var_type'):
+            details = f" <{node.var_type}>"
+        
+        self.ast_text.insert(tk.END, f"{node_prefix}{connector}{node_name}{details}\n")
+        
+        # Prepare prefix for children
+        if is_root:
+            child_prefix = ""
+        else:
+            child_prefix = prefix + ("│   " if not is_last else "    ")
+        
+        # Get children
+        children = []
+        if hasattr(node, '__dict__'):
+            for key, value in node.__dict__.items():
+                if key in ['value', 'name', 'operator', 'var_type']:  # Skip already displayed
+                    continue
+                if isinstance(value, list):
+                    for i, item in enumerate(value):
+                        if hasattr(item, '__class__') and 'Node' in item.__class__.__name__:
+                            children.append((f"{key}[{i}]", item))
+                elif hasattr(value, '__class__') and 'Node' in value.__class__.__name__:
+                    children.append((key, value))
+        
+        # Print children
+        for i, (label, child) in enumerate(children):
+            is_last_child = (i == len(children) - 1)
+            self.print_ast_tree(child, child_prefix, is_last_child)
     
     def show_tac(self):
-        """Display TAC"""
+        """Display TAC with enhanced visualization"""
         if self.tac:
             self.tac_text.delete('1.0', tk.END)
-            self.tac_text.insert('1.0', "Three-Address Code:\n")
-            self.tac_text.insert(tk.END, "=" * 60 + "\n\n")
+            
+            # Title
+            self.tac_text.insert('1.0', "PHASE 4: INTERMEDIATE CODE GENERATION\n")
+            self.tac_text.insert(tk.END, "=" * 70 + "\n\n")
+            self.tac_text.insert(tk.END, "Three-Address Code (TAC):\n\n")
+            
+            # Statistics
+            self.tac_text.insert(tk.END, f"Total Instructions: {len(self.tac)}\n")
+            
+            # Count instruction types
+            op_count = {}
+            for instr in self.tac:
+                op = instr.op if hasattr(instr, 'op') else str(instr).split()[0]
+                op_count[op] = op_count.get(op, 0) + 1
+            
+            self.tac_text.insert(tk.END, f"Unique Operations: {len(op_count)}\n")
+            self.tac_text.insert(tk.END, "\n" + "-" * 70 + "\n\n")
+            
+            # Display instructions with visual separators
+            current_function = None
             for i, instr in enumerate(self.tac):
-                self.tac_text.insert(tk.END, f"{i:3d}: {instr}\n")
+                instr_str = str(instr)
+                
+                # Detect function boundaries
+                if 'function' in instr_str.lower() or 'label' in instr_str.lower():
+                    if current_function is not None:
+                        self.tac_text.insert(tk.END, "\n")
+                    self.tac_text.insert(tk.END, f"\u250c─ Function/Label Block ─┐\n")
+                    current_function = instr_str
+                
+                # Add instruction with line number
+                if 'jump' in instr_str.lower() or 'goto' in instr_str.lower():
+                    self.tac_text.insert(tk.END, f"{i:3d}: ➡ {instr_str}\n")
+                elif 'return' in instr_str.lower():
+                    self.tac_text.insert(tk.END, f"{i:3d}: ↩ {instr_str}\n")
+                elif 'call' in instr_str.lower():
+                    self.tac_text.insert(tk.END, f"{i:3d}: 📞 {instr_str}\n")
+                else:
+                    self.tac_text.insert(tk.END, f"{i:3d}:   {instr_str}\n")
+            
+            # Show operation statistics
+            self.tac_text.insert(tk.END, "\n" + "=" * 70 + "\n")
+            self.tac_text.insert(tk.END, "Operation Statistics:\n")
+            self.tac_text.insert(tk.END, "-" * 70 + "\n")
+            for op, count in sorted(op_count.items(), key=lambda x: x[1], reverse=True)[:10]:
+                bar = "█" * min(count, 30)
+                self.tac_text.insert(tk.END, f"{op:<15} {count:3d} {bar}\n")
     
     def show_optimized_tac(self):
-        """Display optimized TAC"""
+        """Display optimized TAC with comparison"""
         if self.optimized_tac:
             self.opt_text.delete('1.0', tk.END)
-            self.opt_text.insert('1.0', "Optimized Three-Address Code:\n")
-            self.opt_text.insert(tk.END, "=" * 60 + "\n\n")
-            for i, instr in enumerate(self.optimized_tac):
-                self.opt_text.insert(tk.END, f"{i:3d}: {instr}\n")
+            
+            # Title
+            self.opt_text.insert('1.0', "PHASE 5: OPTIMIZATION\n")
+            self.opt_text.insert(tk.END, "=" * 70 + "\n\n")
             
             # Show optimization stats
             original_count = len(self.tac) if self.tac else 0
             optimized_count = len(self.optimized_tac)
             reduction = original_count - optimized_count
+            reduction_pct = (reduction / original_count * 100) if original_count > 0 else 0
             
-            self.opt_text.insert(tk.END, f"\n{'=' * 60}\n")
-            self.opt_text.insert(tk.END, f"Original instructions: {original_count}\n")
-            self.opt_text.insert(tk.END, f"Optimized instructions: {optimized_count}\n")
-            self.opt_text.insert(tk.END, f"Reduction: {reduction} instructions\n")
+            # Statistics box
+            self.opt_text.insert(tk.END, "┌" + "─" * 68 + "┐\n")
+            self.opt_text.insert(tk.END, "│" + " OPTIMIZATION RESULTS".center(68) + "│\n")
+            self.opt_text.insert(tk.END, "├" + "─" * 68 + "┤\n")
+            self.opt_text.insert(tk.END, f"│ Original Instructions:    {original_count:5d}" + " " * 40 + "│\n")
+            self.opt_text.insert(tk.END, f"│ Optimized Instructions:   {optimized_count:5d}" + " " * 40 + "│\n")
+            self.opt_text.insert(tk.END, f"│ Reduction:                {reduction:5d} instructions ({reduction_pct:.1f}%)" + " " * 20 + "│\n")
+            self.opt_text.insert(tk.END, "└" + "─" * 68 + "┘\n\n")
+            
+            # Progress bar visualization
+            if original_count > 0:
+                bar_length = 50
+                filled = int((optimized_count / original_count) * bar_length)
+                bar = "█" * filled + "░" * (bar_length - filled)
+                self.opt_text.insert(tk.END, f"Code Size: [{bar}] {optimized_count}/{original_count}\n\n")
+            
+            self.opt_text.insert(tk.END, "-" * 70 + "\n")
+            self.opt_text.insert(tk.END, "Optimized Code:\n")
+            self.opt_text.insert(tk.END, "-" * 70 + "\n\n")
+            
+            # Display optimized instructions
+            for i, instr in enumerate(self.optimized_tac):
+                self.opt_text.insert(tk.END, f"{i:3d}: {instr}\n")
+            
+            # Optimization techniques applied
+            self.opt_text.insert(tk.END, "\n" + "=" * 70 + "\n")
+            self.opt_text.insert(tk.END, "Optimization Techniques Applied:\n")
+            self.opt_text.insert(tk.END, "-" * 70 + "\n")
+            self.opt_text.insert(tk.END, "✓ Constant Folding\n")
+            self.opt_text.insert(tk.END, "✓ Dead Code Elimination\n")
+            self.opt_text.insert(tk.END, "✓ Unreachable Code Removal\n")
     
     def show_language_reference(self):
         """Show language reference"""

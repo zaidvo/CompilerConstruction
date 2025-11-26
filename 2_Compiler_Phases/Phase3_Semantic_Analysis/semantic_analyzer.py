@@ -16,15 +16,27 @@ class SymbolTable:
         self.parent = parent
         self.scope_level = 0 if parent is None else parent.scope_level + 1
     
-    def define(self, name: str, symbol_type: str, value_type: str = None):
+    def define(self, name: str, symbol_type: str, value_type: str = None, init_value=None, line_number=None):
         """Define a new symbol in the current scope"""
         if name in self.symbols:
             raise NameError(f"Symbol '{name}' already defined in current scope")
         self.symbols[name] = {
             'type': symbol_type,  # 'variable' or 'function'
             'value_type': value_type,  # 'number', 'string', 'boolean', 'array'
-            'scope_level': self.scope_level
+            'scope_level': self.scope_level,
+            'init_value': init_value,  # Initial value or expression
+            'line_number': line_number,  # Line where declared
+            'is_initialized': init_value is not None,
+            'is_used': False  # Track if variable is used
         }
+    
+    def mark_used(self, name: str):
+        """Mark a symbol as used"""
+        symbol = self.lookup(name)
+        if symbol and name in self.symbols:
+            self.symbols[name]['is_used'] = True
+        elif symbol and self.parent:
+            self.parent.mark_used(name)
     
     def lookup(self, name: str) -> Optional[Dict[str, Any]]:
         """Look up a symbol in current scope or parent scopes"""
@@ -48,6 +60,7 @@ class SemanticAnalyzer:
         self.in_function = False
         self.in_loop = False
         self.errors: List[str] = []
+        self.all_symbols = []  # Track all symbols across all scopes
         
         # No built-in functions - users must define everything themselves
     
@@ -71,6 +84,39 @@ class SemanticAnalyzer:
         if self.errors:
             error_msg = "\n".join(self.errors)
             raise Exception(f"Semantic analysis failed:\n{error_msg}")
+    
+    def get_expr_string(self, node) -> str:
+        """Convert expression node to readable string"""
+        if node is None:
+            return 'null'
+        
+        node_class = node.__class__.__name__
+        
+        if node_class == 'NumberNode':
+            return str(node.value)
+        elif node_class == 'StringNode':
+            return f'"{node.value}"'
+        elif node_class == 'BooleanNode':
+            return str(node.value).lower()
+        elif node_class == 'IdentifierNode':
+            return node.name
+        elif node_class == 'BinaryOpNode':
+            left = self.get_expr_string(node.left)
+            right = self.get_expr_string(node.right)
+            return f"({left} {node.operator} {right})"
+        elif node_class == 'UnaryOpNode':
+            operand = self.get_expr_string(node.operand)
+            return f"{node.operator}({operand})"
+        elif node_class == 'ArrayLiteralNode':
+            if hasattr(node, 'elements'):
+                elements = [self.get_expr_string(e) for e in node.elements]
+                return f"[{', '.join(elements)}]"
+            return '[]'
+        elif node_class == 'FunctionCallNode':
+            args = [self.get_expr_string(a) for a in node.arguments]
+            return f"{node.name}({', '.join(args)})"
+        else:
+            return f"<{node_class}>"
     
     def visit(self, node: ASTNode) -> str:
         """Visit a node and return its type"""
@@ -120,8 +166,26 @@ class SemanticAnalyzer:
             if declared_type != value_type and not (declared_type == 'number' and value_type == 'number'):
                 self.error(f"Type mismatch: variable '{node.name}' declared as {node.var_type} but assigned {value_type}")
         
-        # Define variable in symbol table with declared type
-        self.current_scope.define(node.name, 'variable', declared_type)
+        # Get initialization expression as string
+        init_expr = self.get_expr_string(node.value)
+        
+        # Get line number if available
+        line_num = getattr(node, 'line', None)
+        
+        # Define variable in symbol table with comprehensive info
+        self.current_scope.define(node.name, 'variable', declared_type, init_expr, line_num)
+        
+        # Track this symbol in all_symbols list
+        self.all_symbols.append((node.name, {
+            'type': 'variable',
+            'value_type': declared_type,
+            'scope_level': self.current_scope.scope_level,
+            'init_value': init_expr,
+            'line_number': line_num,
+            'is_initialized': True,
+            'is_used': False
+        }))
+        
         return 'void'
     
     def visit_AssignmentNode(self, node: AssignmentNode) -> str:
@@ -160,14 +224,18 @@ class SemanticAnalyzer:
         if cond_type not in ('boolean', 'number', 'unknown'):  # Allow numbers for truthiness
             self.error(f"If condition must be boolean, got {cond_type}")
         
-        # Visit then block
+        # Visit then block in new scope
+        self.enter_scope()
         for stmt in node.then_block:
             self.visit(stmt)
+        self.exit_scope()
         
-        # Visit else block if present
+        # Visit else block if present in new scope
         if node.else_block:
+            self.enter_scope()
             for stmt in node.else_block:
                 self.visit(stmt)
+            self.exit_scope()
         return 'void'
     
     def visit_RepeatNode(self, node: RepeatNode) -> str:
@@ -177,11 +245,13 @@ class SemanticAnalyzer:
         if count_type not in ('number', 'unknown'):
             self.error(f"Repeat count must be a number, got {count_type}")
         
-        # Visit body
+        # Visit body in new scope
         old_in_loop = self.in_loop
         self.in_loop = True
+        self.enter_scope()
         for stmt in node.body:
             self.visit(stmt)
+        self.exit_scope()
         self.in_loop = old_in_loop
         return 'void'
     
@@ -192,11 +262,13 @@ class SemanticAnalyzer:
         if cond_type not in ('boolean', 'number', 'unknown'):
             self.error(f"While condition must be boolean, got {cond_type}")
         
-        # Visit body
+        # Visit body in new scope
         old_in_loop = self.in_loop
         self.in_loop = True
+        self.enter_scope()
         for stmt in node.body:
             self.visit(stmt)
+        self.exit_scope()
         self.in_loop = old_in_loop
         return 'void'
     
@@ -221,13 +293,28 @@ class SemanticAnalyzer:
         
         return_value_type = type_map.get(node.return_type, 'unknown')
         
+        # Get line number if available
+        line_num = getattr(node, 'line', None)
+        
         # Define function in global scope (before visiting body to allow recursion)
         self.global_scope.symbols[node.name] = {
             'type': 'function',
             'value_type': return_value_type,
             'return_type': node.return_type,
-            'scope_level': 0
+            'scope_level': 0,
+            'line_number': line_num
         }
+        
+        # Track this function in all_symbols list
+        self.all_symbols.append((node.name, {
+            'type': 'function',
+            'value_type': return_value_type,
+            'return_type': node.return_type,
+            'scope_level': 0,
+            'line_number': line_num,
+            'is_initialized': True,
+            'is_used': False
+        }))
         
         # Enter function scope
         self.enter_scope()
@@ -237,7 +324,19 @@ class SemanticAnalyzer:
         # Define parameters with their types
         for param_type, param_name in node.parameters:
             param_value_type = type_map.get(param_type, 'number')
+            param_line = getattr(node, 'line', None)
             self.current_scope.define(param_name, 'variable', param_value_type)
+            
+            # Track parameters in all_symbols
+            self.all_symbols.append((param_name, {
+                'type': 'parameter',
+                'value_type': param_value_type,
+                'scope_level': self.current_scope.scope_level,
+                'init_value': f'<param>',
+                'line_number': param_line,
+                'is_initialized': True,
+                'is_used': False
+            }))
         
         # Visit body
         for stmt in node.body:
@@ -358,6 +457,15 @@ class SemanticAnalyzer:
         if not symbol:
             self.error(f"Variable '{node.name}' not declared")
             return 'unknown'
+        
+        # Mark variable as used in symbol table
+        self.current_scope.mark_used(node.name)
+        
+        # Mark variable as used in all_symbols list
+        for i, (name, info) in enumerate(self.all_symbols):
+            if name == node.name:
+                info['is_used'] = True
+        
         return symbol.get('value_type', 'unknown')
     
     def visit_ArrayLiteralNode(self, node: ArrayLiteralNode) -> str:
@@ -386,6 +494,12 @@ class SemanticAnalyzer:
         if not symbol or symbol['type'] != 'function':
             self.error(f"Function '{node.name}' not defined")
             return 'number'  # Assume number to allow compilation to continue
+        
+        # Mark function as used in all_symbols list
+        for i, (name, info) in enumerate(self.all_symbols):
+            if name == node.name and info.get('type') == 'function':
+                info['is_used'] = True
+                break
         
         # Visit arguments
         for arg in node.arguments:
