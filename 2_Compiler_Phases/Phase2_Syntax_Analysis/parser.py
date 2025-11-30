@@ -94,6 +94,8 @@ class Parser:
             return self.parse_repeat()
         elif token_type == TokenType.WHILE:
             return self.parse_while()
+        elif token_type == TokenType.FOR:
+            return self.parse_for()
         elif token_type == TokenType.FUNCTION:
             return self.parse_function_def()
         elif token_type == TokenType.RETURN:
@@ -224,6 +226,49 @@ class Parser:
         
         self.expect(TokenType.END)
         return WhileNode(condition, body)
+    
+    def parse_for(self) -> ForNode:
+        """Parse for loop: for int i = 0; i < 10; i = i + 1: ... end"""
+        self.expect(TokenType.FOR)
+        
+        # Parse initialization (variable declaration or assignment)
+        init_stmt = None
+        if self.current_token and self.current_token.type in (TokenType.INT, TokenType.LONG,
+                                                                TokenType.FLOAT, TokenType.STRING_TYPE,
+                                                                TokenType.BOOLEAN, TokenType.ARRAY,
+                                                                TokenType.MATRIX):
+            init_stmt = self.parse_var_decl()
+        elif self.current_token and self.current_token.type == TokenType.IDENTIFIER:
+            init_stmt = self.parse_assignment()
+        else:
+            self.error("Expected variable declaration or assignment in for-loop initialization")
+        
+        self.expect(TokenType.SEMICOLON)
+        
+        # Parse condition
+        condition = self.parse_expression()
+        self.expect(TokenType.SEMICOLON)
+        
+        # Parse update statement (assignment)
+        update_stmt = None
+        if self.current_token and self.current_token.type == TokenType.IDENTIFIER:
+            update_stmt = self.parse_assignment()
+        else:
+            self.error("Expected assignment in for-loop update")
+        
+        self.expect(TokenType.COLON)
+        self.skip_newlines()
+        
+        # Parse body
+        body = []
+        while self.current_token and self.current_token.type != TokenType.END:
+            stmt = self.parse_statement()
+            if stmt:
+                body.append(stmt)
+            self.skip_newlines()
+        
+        self.expect(TokenType.END)
+        return ForNode(init_stmt, condition, update_stmt, body)
     
     def parse_function_def(self) -> FuncDefNode:
         """Parse function definition: function int name(int a, int b): ... end"""

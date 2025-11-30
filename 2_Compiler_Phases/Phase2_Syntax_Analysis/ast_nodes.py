@@ -75,6 +75,15 @@ class WhileNode(ASTNode):
 
 
 @dataclass
+class ForNode(ASTNode):
+    """For loop: for int i = 0; i < 10; i = i + 1: ... end"""
+    init: ASTNode  # Initialization statement (VarDeclNode or AssignmentNode)
+    condition: ASTNode  # Condition expression
+    update: ASTNode  # Update statement (AssignmentNode)
+    body: List[ASTNode]
+
+
+@dataclass
 class FuncDefNode(ASTNode):
     """Function definition: function int func(int a, int b): ... end"""
     return_type: str  # int, long, float, string, boolean, array, matrix

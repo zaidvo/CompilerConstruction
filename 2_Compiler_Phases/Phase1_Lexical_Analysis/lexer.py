@@ -22,6 +22,7 @@ class TokenType(Enum):
     RETURN = auto()         # return statement
     END = auto()            # end block
     WHILE = auto()          # while loop
+    FOR = auto()            # for loop
     INPUT = auto()          # input statement
     BREAK = auto()          # break statement
     CONTINUE = auto()       # continue statement
@@ -67,6 +68,7 @@ class TokenType(Enum):
     RBRACKET = auto()       # ]
     COLON = auto()          # :
     COMMA = auto()          # ,
+    SEMICOLON = auto()      # ;
     
     # Special
     NEWLINE = auto()
@@ -99,6 +101,7 @@ class Lexer:
         'return': TokenType.RETURN,
         'end': TokenType.END,
         'while': TokenType.WHILE,
+        'for': TokenType.FOR,
         'input': TokenType.INPUT,
         'break': TokenType.BREAK,
         'continue': TokenType.CONTINUE,
@@ -337,6 +340,10 @@ class Lexer:
             elif char == ',':
                 self.advance()
                 self.tokens.append(Token(TokenType.COMMA, ',', start_line, start_col))
+            
+            elif char == ';':
+                self.advance()
+                self.tokens.append(Token(TokenType.SEMICOLON, ';', start_line, start_col))
             
             else:
                 self.error(f"Unexpected character '{char}'")

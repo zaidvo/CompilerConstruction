@@ -4,7 +4,7 @@
 # This module implements an interpreter that executes Three-Address Code
 # All math operations are implemented manually without Python built-ins
 
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 from ir_generator import TACInstruction
 import sys
 
@@ -20,7 +20,6 @@ class Interpreter:
         self.call_stack: List[Dict[str, Any]] = []  # Function call stack
         self.output: List[str] = []  # Captured output
         self.angle_mode = 'radians'  # Default angle mode: 'radians' or 'degrees'
-        self.param_stack: List[Any] = []  # Parameter stack for function calls
         self.param_stack: List[Any] = []  # Parameter stack for function calls
     
     def execute(self, instructions: List[TACInstruction]):

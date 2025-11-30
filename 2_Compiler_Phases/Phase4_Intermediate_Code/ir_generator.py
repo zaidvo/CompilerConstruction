@@ -58,6 +58,7 @@ class IRGenerator:
         self.instructions: List[TACInstruction] = []
         self.temp_counter = 0
         self.label_counter = 0
+        self.loop_stack = []  # Stack of (continue_label, break_label) tuples
     
     def new_temp(self) -> str:
         """Generate a new temporary variable"""
@@ -163,6 +164,9 @@ class IRGenerator:
         start_label = self.new_label()
         end_label = self.new_label()
         
+        # Push loop context for break/continue
+        self.loop_stack.append((start_label, end_label))
+        
         # Loop start
         self.emit('label', None, None, start_label)
         
@@ -187,11 +191,55 @@ class IRGenerator:
         
         # End label
         self.emit('label', None, None, end_label)
+        
+        # Pop loop context
+        self.loop_stack.pop()
+    
+    def visit_ForNode(self, node: ForNode):
+        """Visit for loop: for int i = 0; i < 10; i = i + 1: ... end"""
+        # Generate initialization code
+        self.visit(node.init)
+        
+        start_label = self.new_label()
+        update_label = self.new_label()
+        end_label = self.new_label()
+        
+        # Push loop context for break/continue
+        self.loop_stack.append((update_label, end_label))
+        
+        # Loop start label
+        self.emit('label', None, None, start_label)
+        
+        # Check condition
+        cond_loc = self.visit(node.condition)
+        self.emit('if_false', cond_loc, None, end_label)
+        
+        # Loop body
+        for stmt in node.body:
+            self.visit(stmt)
+        
+        # Update label (for continue)
+        self.emit('label', None, None, update_label)
+        
+        # Update statement (e.g., i = i + 1)
+        self.visit(node.update)
+        
+        # Jump back to start
+        self.emit('goto', None, None, start_label)
+        
+        # End label (for break)
+        self.emit('label', None, None, end_label)
+        
+        # Pop loop context
+        self.loop_stack.pop()
     
     def visit_WhileNode(self, node: WhileNode):
         """Visit while loop"""
         start_label = self.new_label()
         end_label = self.new_label()
+        
+        # Push loop context for break/continue
+        self.loop_stack.append((start_label, end_label))
         
         # Loop start
         self.emit('label', None, None, start_label)
@@ -209,6 +257,9 @@ class IRGenerator:
         
         # End label
         self.emit('label', None, None, end_label)
+        
+        # Pop loop context
+        self.loop_stack.pop()
     
     def visit_FuncDefNode(self, node: FuncDefNode):
         """Visit function definition"""
@@ -229,13 +280,17 @@ class IRGenerator:
     
     def visit_BreakNode(self, node: BreakNode):
         """Visit break statement"""
-        # This would need loop context tracking for proper implementation
-        self.emit('break')
+        if not self.loop_stack:
+            raise Exception("'break' statement outside loop")
+        _, break_label = self.loop_stack[-1]
+        self.emit('goto', None, None, break_label)
     
     def visit_ContinueNode(self, node: ContinueNode):
         """Visit continue statement"""
-        # This would need loop context tracking for proper implementation
-        self.emit('continue')
+        if not self.loop_stack:
+            raise Exception("'continue' statement outside loop")
+        continue_label, _ = self.loop_stack[-1]
+        self.emit('goto', None, None, continue_label)
     
     # ========================================================================
     # EXPRESSION VISITORS

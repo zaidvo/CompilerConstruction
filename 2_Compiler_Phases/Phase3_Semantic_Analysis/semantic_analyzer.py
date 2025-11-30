@@ -272,6 +272,29 @@ class SemanticAnalyzer:
         self.in_loop = old_in_loop
         return 'void'
     
+    def visit_ForNode(self, node: ForNode) -> str:
+        """Visit for loop: for int i = 0; i < 10; i = i + 1: ... end"""
+        # Visit initialization
+        self.visit(node.init)
+        
+        # Check condition type
+        cond_type = self.visit(node.condition)
+        if cond_type not in ('boolean', 'number', 'unknown'):
+            self.error(f"For loop condition must be boolean, got {cond_type}")
+        
+        # Visit update statement
+        self.visit(node.update)
+        
+        # Visit body in new scope
+        old_in_loop = self.in_loop
+        self.in_loop = True
+        self.enter_scope()
+        for stmt in node.body:
+            self.visit(stmt)
+        self.exit_scope()
+        self.in_loop = old_in_loop
+        return 'void'
+    
     def visit_FuncDefNode(self, node: FuncDefNode) -> str:
         """Visit function definition with return type and typed parameters"""
         # Check if function already exists (but allow if it's a built-in being redefined)
