@@ -1,0 +1,46 @@
+# ============================================================================
+# TEST: Multi-Declaration and Multi-Print Support
+# ============================================================================
+# This test file demonstrates the new multi-declaration and multi-print features
+
+# Test 1: Basic multi-declaration with initialization
+int a = 1, b = 2, c = 3
+print a, b, c
+
+# Test 2: Multi-declaration with mixed initialization
+int x = 10, y, z = 30
+print x, y, z
+
+# Test 3: Multi-declaration without initialization
+float f1, f2, f3
+print f1, f2, f3
+
+# Test 4: String multi-declaration
+string s1 = "Hello", s2 = "World", s3
+print s1, s2, s3
+
+# Test 5: Multi-print with expressions
+int num1 = 5, num2 = 10
+print num1, num2, num1 + num2, num1 * num2
+
+# Test 6: Multi-print with different types
+int intVal = 42
+float floatVal = 3.14
+string strVal = "Test"
+print intVal, floatVal, strVal
+
+# Test 7: Nested expressions in multi-print
+int base = 2
+print base, base * 2, base * 3, base * 4, base * 5
+
+# Test 8: Multi-declaration with arrays
+array arr1 = [1, 2, 3], arr2 = [4, 5, 6]
+print arr1, arr2
+
+# Test 9: Boolean multi-declaration
+boolean flag1 = true, flag2 = false, flag3
+print flag1, flag2, flag3
+
+# Test 10: Complex expression in multi-print
+int p = 3, q = 4, r = 5
+print p, q, r, p + q, q + r, p + q + r

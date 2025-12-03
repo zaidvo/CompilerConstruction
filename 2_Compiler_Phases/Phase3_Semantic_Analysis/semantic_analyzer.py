@@ -206,8 +206,13 @@ class SemanticAnalyzer:
         return 'void'
     
     def visit_PrintNode(self, node: PrintNode) -> str:
-        """Visit print statement"""
-        self.visit(node.expression)
+        """Visit print statement - supports single or multiple expressions"""
+        # Handle both single expression and list of expressions
+        if isinstance(node.expression, list):
+            for expr in node.expression:
+                self.visit(expr)
+        else:
+            self.visit(node.expression)
         return 'void'
     
     def visit_InputNode(self, node: InputNode) -> str:
@@ -274,7 +279,12 @@ class SemanticAnalyzer:
     
     def visit_ForNode(self, node: ForNode) -> str:
         """Visit for loop: for int i = 0; i < 10; i = i + 1: ... end"""
-        # Visit initialization
+        # Enter new scope BEFORE initialization so loop variable is scoped to the loop
+        old_in_loop = self.in_loop
+        self.in_loop = True
+        self.enter_scope()
+        
+        # Visit initialization (now in loop scope)
         self.visit(node.init)
         
         # Check condition type
@@ -285,12 +295,11 @@ class SemanticAnalyzer:
         # Visit update statement
         self.visit(node.update)
         
-        # Visit body in new scope
-        old_in_loop = self.in_loop
-        self.in_loop = True
-        self.enter_scope()
+        # Visit body (already in loop scope)
         for stmt in node.body:
             self.visit(stmt)
+        
+        # Exit scope
         self.exit_scope()
         self.in_loop = old_in_loop
         return 'void'

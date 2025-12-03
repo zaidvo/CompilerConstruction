@@ -1,0 +1,34 @@
+# Test user input functionality
+
+print "Enter your name:"
+string name = ""
+input name
+
+print "Enter your age:"
+int age = 0
+input age
+
+print "Enter a number:"
+float num = 0.0
+input num
+
+print "--- Results ---"
+print "Name:"
+print name
+print "Age:"
+print age
+print "Number:"
+print num
+
+# You can use input in calculations
+int x = 0
+print "Enter first number:"
+input x
+
+int y = 0
+print "Enter second number:"
+input y
+
+int sum = x + y
+print "Sum:"
+print sum

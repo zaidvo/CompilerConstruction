@@ -12,8 +12,9 @@ import sys
 class Interpreter:
     """Interpreter/Virtual Machine for executing TAC"""
     
-    def __init__(self):
-        self.memory: Dict[str, Any] = {}  # Variable storage
+    def __init__(self, input_callback=None):
+        self.memory: Dict[str, Any] = {}  # Variable storage (legacy, still used for globals)
+        self.scope_stack: List[Dict[str, Any]] = [{}]  # Stack of scopes for proper variable scoping
         self.pc = 0  # Program counter
         self.instructions: List[TACInstruction] = []
         self.labels: Dict[str, int] = {}  # Label positions
@@ -21,6 +22,8 @@ class Interpreter:
         self.output: List[str] = []  # Captured output
         self.angle_mode = 'radians'  # Default angle mode: 'radians' or 'degrees'
         self.param_stack: List[Any] = []  # Parameter stack for function calls
+        self.scope_depth_map: Dict[int, int] = {}  # Maps PC to scope depth for tracking
+        self.input_callback = input_callback  # Custom input function for GUI
     
     def execute(self, instructions: List[TACInstruction]):
         """Execute TAC instructions"""
@@ -185,8 +188,12 @@ class Interpreter:
             sys.stdout.write(output_str + '\n')
         
         elif op == 'input':
-            # Read from stdin manually
-            value = sys.stdin.readline().strip()
+            # Use custom input callback if provided (for GUI), otherwise use stdin
+            if self.input_callback:
+                value = self.input_callback()
+            else:
+                # Read from stdin manually
+                value = sys.stdin.readline().strip()
             # Try to convert to number manually
             value = self._parse_number(value)
             self.memory[instr.result] = value

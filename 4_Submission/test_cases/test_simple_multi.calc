@@ -1,0 +1,19 @@
+# Simple demonstration of Multi-Declaration and Multi-Print
+
+# Multi-Declaration: declare multiple variables in one line
+int x = 10, y = 20, z = 30
+
+# Multi-Print: print multiple values separated by commas
+print x, y, z
+
+# Multi-Declaration with partial initialization
+float a = 1.5, b, c = 3.5
+print a, b, c
+
+# Mix and match
+string name = "Alice", greeting = "Hello"
+print greeting, name
+
+# Print expressions
+int num1 = 5, num2 = 10
+print num1, num2, num1 + num2

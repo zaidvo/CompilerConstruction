@@ -65,7 +65,11 @@ class Parser:
         while self.current_token and self.current_token.type != TokenType.EOF:
             stmt = self.parse_statement()
             if stmt:
-                statements.append(stmt)
+                # Handle multiple declarations from parse_var_decl
+                if isinstance(stmt, list):
+                    statements.extend(stmt)
+                else:
+                    statements.append(stmt)
             self.skip_newlines()
         
         return ProgramNode(statements)
@@ -118,16 +122,63 @@ class Parser:
         else:
             self.error(f"Unexpected token {token_type.name}")
     
-    def parse_var_decl(self) -> VarDeclNode:
-        """Parse variable declaration: int x = expr"""
+    def parse_var_decl(self):
+        """Parse variable declaration: int x = expr OR int x OR int x=1, y=2, z"""
         # Parse type keyword
         var_type = self.current_token.value
         self.advance()  # consume type keyword
         
+        declarations = []
+        
+        # Parse first declaration
         name_token = self.expect(TokenType.IDENTIFIER)
-        self.expect(TokenType.ASSIGN)
-        value = self.parse_expression()
-        return VarDeclNode(var_type, name_token.value, value)
+        
+        # Check if there's an initialization
+        if self.current_token and self.current_token.type == TokenType.ASSIGN:
+            self.advance()  # consume ASSIGN
+            value = self.parse_expression()
+        else:
+            # No initialization - use default value based on type
+            value = self._get_default_value(var_type)
+        
+        declarations.append(VarDeclNode(var_type, name_token.value, value))
+        
+        # Check for additional declarations separated by commas
+        while self.current_token and self.current_token.type == TokenType.COMMA:
+            self.advance()  # consume COMMA
+            
+            name_token = self.expect(TokenType.IDENTIFIER)
+            
+            # Check if there's an initialization
+            if self.current_token and self.current_token.type == TokenType.ASSIGN:
+                self.advance()  # consume ASSIGN
+                value = self.parse_expression()
+            else:
+                # No initialization - use default value based on type
+                value = self._get_default_value(var_type)
+            
+            declarations.append(VarDeclNode(var_type, name_token.value, value))
+        
+        # Return single declaration or list
+        if len(declarations) == 1:
+            return declarations[0]
+        else:
+            return declarations
+    
+    def _get_default_value(self, var_type):
+        """Get default value for a given type"""
+        if var_type in ('int', 'long'):
+            return LiteralNode(0)
+        elif var_type == 'float':
+            return LiteralNode(0.0)
+        elif var_type == 'string':
+            return LiteralNode("")
+        elif var_type == 'boolean':
+            return LiteralNode(False)
+        elif var_type in ('array', 'matrix'):
+            return ArrayLiteralNode([])
+        else:
+            return LiteralNode(0)  # Default to 0
     
     def parse_assignment(self) -> AssignmentNode:
         """Parse assignment: x = expr or x[index] = expr"""
@@ -147,10 +198,26 @@ class Parser:
             return AssignmentNode(name_token.value, value)
     
     def parse_print(self) -> PrintNode:
-        """Parse print statement: print expr"""
+        """Parse print statement: print expr OR print x, y, z"""
         self.expect(TokenType.PRINT)
+        
+        expressions = []
+        
+        # Parse first expression
         expr = self.parse_expression()
-        return PrintNode(expr)
+        expressions.append(expr)
+        
+        # Check for additional expressions separated by commas
+        while self.current_token and self.current_token.type == TokenType.COMMA:
+            self.advance()  # consume COMMA
+            expr = self.parse_expression()
+            expressions.append(expr)
+        
+        # Return single print or multi-print
+        if len(expressions) == 1:
+            return PrintNode(expressions[0])
+        else:
+            return PrintNode(expressions)
     
     def parse_input(self) -> InputNode:
         """Parse input statement: input x"""

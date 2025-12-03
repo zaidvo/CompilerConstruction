@@ -59,6 +59,8 @@ class IRGenerator:
         self.temp_counter = 0
         self.label_counter = 0
         self.loop_stack = []  # Stack of (continue_label, break_label) tuples
+        self.scope_depth = 0  # Track scope depth for variable naming
+        self.var_scopes = [{}]  # Stack of scopes, each is a dict mapping var_name to scoped_name
     
     def new_temp(self) -> str:
         """Generate a new temporary variable"""
@@ -75,6 +77,38 @@ class IRGenerator:
         instr = TACInstruction(op, arg1, arg2, result)
         self.instructions.append(instr)
         return instr
+    
+    def enter_scope(self):
+        """Enter a new scope"""
+        self.scope_depth += 1
+        self.var_scopes.append({})  # New scope dictionary
+    
+    def exit_scope(self):
+        """Exit current scope"""
+        if self.scope_depth <= 0 or len(self.var_scopes) <= 1:
+            return  # Don't exit if we're at global scope
+        
+        self.var_scopes.pop()  # Remove current scope
+        self.scope_depth -= 1
+    
+    def get_scoped_name(self, var_name: str) -> str:
+        """Get the scoped name for a variable (search from innermost to outermost)"""
+        # Search from innermost scope to outermost
+        for scope in reversed(self.var_scopes):
+            if var_name in scope:
+                return scope[var_name]
+        # Not found in any scope, return original name (global)
+        return var_name
+    
+    def declare_scoped_var(self, var_name: str) -> str:
+        """Declare a variable in current scope with unique name"""
+        if self.scope_depth > 0:
+            scoped_name = f"{var_name}__scope{self.scope_depth}_{self.temp_counter}"
+            self.var_scopes[-1][var_name] = scoped_name  # Add to current scope
+            return scoped_name
+        # Global scope
+        self.var_scopes[0][var_name] = var_name
+        return var_name
     
     def generate(self, node: ASTNode) -> List[TACInstruction]:
         """Generate TAC for the entire program"""
@@ -101,28 +135,41 @@ class IRGenerator:
     def visit_VarDeclNode(self, node: VarDeclNode):
         """Visit variable declaration"""
         value_loc = self.visit(node.value)
-        self.emit('assign', value_loc, None, node.name)
+        # Declare variable with scoped name if in nested scope
+        scoped_name = self.declare_scoped_var(node.name)
+        self.emit('assign', value_loc, None, scoped_name)
     
     def visit_AssignmentNode(self, node: AssignmentNode):
         """Visit assignment"""
         value_loc = self.visit(node.value)
         
+        # Get scoped name for the variable
+        scoped_name = self.get_scoped_name(node.name)
+        
         if node.index:
             # Array assignment: arr[index] = value
             index_loc = self.visit(node.index)
-            self.emit('array_store', index_loc, value_loc, node.name)
+            self.emit('array_store', index_loc, value_loc, scoped_name)
         else:
             # Simple assignment: x = value
-            self.emit('assign', value_loc, None, node.name)
+            self.emit('assign', value_loc, None, scoped_name)
     
     def visit_PrintNode(self, node: PrintNode):
-        """Visit print statement"""
-        expr_loc = self.visit(node.expression)
-        self.emit('print', expr_loc)
+        """Visit print statement - supports single or multiple expressions"""
+        # Handle both single expression and list of expressions
+        if isinstance(node.expression, list):
+            for expr in node.expression:
+                expr_loc = self.visit(expr)
+                self.emit('print', expr_loc)
+        else:
+            expr_loc = self.visit(node.expression)
+            self.emit('print', expr_loc)
     
     def visit_InputNode(self, node: InputNode):
         """Visit input statement"""
-        self.emit('input', None, None, node.name)
+        # Get scoped name for the variable
+        scoped_name = self.get_scoped_name(node.name)
+        self.emit('input', None, None, scoped_name)
     
     def visit_IfNode(self, node: IfNode):
         """Visit if statement"""
@@ -197,7 +244,10 @@ class IRGenerator:
     
     def visit_ForNode(self, node: ForNode):
         """Visit for loop: for int i = 0; i < 10; i = i + 1: ... end"""
-        # Generate initialization code
+        # Enter new scope for loop variable
+        self.enter_scope()
+        
+        # Generate initialization code (now in loop scope)
         self.visit(node.init)
         
         start_label = self.new_label()
@@ -232,6 +282,9 @@ class IRGenerator:
         
         # Pop loop context
         self.loop_stack.pop()
+        
+        # Exit scope
+        self.exit_scope()
     
     def visit_WhileNode(self, node: WhileNode):
         """Visit while loop"""
@@ -325,7 +378,8 @@ class IRGenerator:
     
     def visit_IdentifierNode(self, node: IdentifierNode) -> str:
         """Visit identifier"""
-        return node.name
+        # Return scoped name if variable is in a nested scope
+        return self.get_scoped_name(node.name)
     
     def visit_ArrayLiteralNode(self, node: ArrayLiteralNode) -> str:
         """Visit array literal"""
