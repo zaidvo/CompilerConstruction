@@ -181,7 +181,11 @@ class Interpreter:
         
         elif op == 'print':
             value = self.get_value(instr.arg1)
-            output_str = str(value)
+            # Convert boolean to readable format
+            if isinstance(value, bool):
+                output_str = 'true' if value else 'false'
+            else:
+                output_str = str(value)
             # Use internal VM output - do NOT use Python print()
             self.output.append(output_str)
             # For stdout visibility in non-GUI mode
@@ -237,12 +241,25 @@ class Interpreter:
             func_name = instr.arg1
             num_args = int(instr.arg2)
             
-            # Call built-in function with collected parameters
-            result = self.call_builtin(func_name, num_args)
-            self.memory[instr.result] = result
-            
-            # Clear param stack after call
-            self.param_stack.clear()
+            # Check if it's a user-defined function (has a label)
+            func_label = f"func_{func_name}"
+            if func_label in self.labels:
+                # Save return address and jump to function
+                return_address = self.pc + 1
+                self.call_stack.append({
+                    'return_address': return_address,
+                    'result_var': instr.result,
+                    'saved_memory': dict(self.memory)  # Save current memory state
+                })
+                # Jump to function
+                self.pc = self.labels[func_label] - 1  # -1 because pc will be incremented
+            else:
+                # Call built-in function with collected parameters
+                result = self.call_builtin(func_name, num_args)
+                self.memory[instr.result] = result
+                
+                # Clear param stack after call
+                self.param_stack.clear()
         
         elif op == 'param':
             # Push parameter value to parameter stack
@@ -250,9 +267,23 @@ class Interpreter:
             self.param_stack.append(value)
         
         elif op == 'return':
-            # For simplicity, we'll just stop execution
-            # A full implementation would need proper call stack handling
-            self.pc = len(self.instructions)
+            # Get return value
+            return_value = self.get_value(instr.arg1) if instr.arg1 else 0
+            
+            # Check if we're in a function call
+            if self.call_stack:
+                # Pop call stack
+                frame = self.call_stack.pop()
+                
+                # Store return value
+                if frame['result_var']:
+                    self.memory[frame['result_var']] = return_value
+                
+                # Return to caller
+                self.pc = frame['return_address'] - 1  # -1 because pc will be incremented
+            else:
+                # No call stack, stop execution (main program return)
+                self.pc = len(self.instructions)
         
         elif op == 'break':
             # Would need loop context tracking

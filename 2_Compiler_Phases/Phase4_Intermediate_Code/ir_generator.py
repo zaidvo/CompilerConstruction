@@ -316,6 +316,12 @@ class IRGenerator:
     
     def visit_FuncDefNode(self, node: FuncDefNode):
         """Visit function definition"""
+        # Skip function body - don't generate code for it inline
+        # Jump over function definition
+        skip_label = self.new_label()
+        self.emit('goto', None, None, skip_label)
+        
+        # Function label
         func_label = f"func_{node.name}"
         self.emit('label', None, None, func_label)
         
@@ -325,6 +331,9 @@ class IRGenerator:
         
         # Implicit return 0 if no return statement
         self.emit('return', '0')
+        
+        # Skip label - continue after function definition
+        self.emit('label', None, None, skip_label)
     
     def visit_ReturnNode(self, node: ReturnNode):
         """Visit return statement"""

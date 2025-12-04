@@ -239,6 +239,8 @@ class Parser:
         
         then_block = []
         while self.current_token and self.current_token.type not in (TokenType.ELSE, TokenType.END):
+            if self.current_token.type == TokenType.EOF:
+                self.error("Missing 'end' or 'else' keyword for if statement")
             stmt = self.parse_statement()
             if stmt:
                 then_block.append(stmt)
@@ -254,11 +256,15 @@ class Parser:
             
             else_block = []
             while self.current_token and self.current_token.type != TokenType.END:
+                if self.current_token.type == TokenType.EOF:
+                    self.error("Missing 'end' keyword for if-else statement")
                 stmt = self.parse_statement()
                 if stmt:
                     else_block.append(stmt)
                 self.skip_newlines()
         
+        if not self.current_token or self.current_token.type == TokenType.EOF:
+            self.error("Missing 'end' keyword for if statement")
         self.expect(TokenType.END)
         return IfNode(condition, then_block, else_block)
     
@@ -271,7 +277,14 @@ class Parser:
         self.skip_newlines()
         
         body = []
+        iteration_count = 0
+        max_iterations = 1000
         while self.current_token and self.current_token.type != TokenType.END:
+            if self.current_token.type == TokenType.EOF:
+                self.error("Missing 'end' keyword for repeat loop")
+            iteration_count += 1
+            if iteration_count > max_iterations:
+                self.error("Infinite loop detected while parsing repeat loop. Check for missing 'end' keyword.")
             stmt = self.parse_statement()
             if stmt:
                 body.append(stmt)
@@ -331,7 +344,14 @@ class Parser:
         
         # Parse body
         body = []
+        iteration_count = 0
+        max_iterations = 1000
         while self.current_token and self.current_token.type != TokenType.END:
+            if self.current_token.type == TokenType.EOF:
+                self.error("Missing 'end' keyword for for loop")
+            iteration_count += 1
+            if iteration_count > max_iterations:
+                self.error("Infinite loop detected while parsing for loop. Check for missing 'end' keyword.")
             stmt = self.parse_statement()
             if stmt:
                 body.append(stmt)
@@ -380,7 +400,13 @@ class Parser:
         self.skip_newlines()
         
         body = []
+        loop_safety = 0
         while self.current_token and self.current_token.type != TokenType.END:
+            if self.current_token.type == TokenType.EOF:
+                self.error(f"Missing 'end' keyword for function '{name_token.value}'. Check for missing 'end' in if/else blocks.")
+            loop_safety += 1
+            if loop_safety > 500:
+                self.error(f"Parser stuck in infinite loop in function '{name_token.value}'. Likely missing 'end' keyword.")
             stmt = self.parse_statement()
             if stmt:
                 body.append(stmt)
