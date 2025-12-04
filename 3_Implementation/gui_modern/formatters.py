@@ -106,25 +106,24 @@ class SemanticFormatter:
         output = "Semantic Analysis Results\n"
         output += "=" * 80 + "\n\n"
         
-        # Symbol table
+        # Just show summary, not full symbol table
         symbols = semantic_info.get('symbols', [])
-        output += f"Symbol Table ({len(symbols)} symbols):\n"
-        output += "-" * 80 + "\n"
+        output += f"Total Symbols: {len(symbols)}\n"
+        output += "-" * 80 + "\n\n"
         
-        if symbols:
-            output += f"{'Name':<20} {'Type':<15} {'Scope':<15} {'Initialized':<12}\n"
-            output += "-" * 80 + "\n"
-            for symbol in symbols:
-                if isinstance(symbol, dict):
-                    name = symbol.get('name', '?')
-                    sym_type = symbol.get('type', '?')
-                    scope = symbol.get('scope', '?')
-                    init = symbol.get('initialized', '?')
-                    output += f"{name:<20} {sym_type:<15} {scope:<15} {str(init):<12}\n"
-                else:
-                    output += f"{str(symbol)}\n"
-        else:
-            output += "No symbols found.\n"
+        # Count by type
+        var_count = sum(1 for s in symbols if isinstance(s, tuple) and len(s) > 1 and s[1].get('type') == 'variable')
+        func_count = sum(1 for s in symbols if isinstance(s, tuple) and len(s) > 1 and s[1].get('type') == 'function')
+        param_count = sum(1 for s in symbols if isinstance(s, tuple) and len(s) > 1 and s[1].get('type') == 'parameter')
+        
+        output += f"Variables:  {var_count}\n"
+        output += f"Functions:  {func_count}\n"
+        output += f"Parameters: {param_count}\n\n"
+        
+        output += "✓ Type checking complete\n"
+        output += "✓ Scope resolution complete\n"
+        output += "✓ Symbol table built\n\n"
+        output += "See 'Symbol Table (STM)' section for detailed symbol information.\n"
         
         # Errors
         errors = semantic_info.get('errors', [])
@@ -133,6 +132,92 @@ class SemanticFormatter:
             output += "-" * 80 + "\n"
             for error in errors:
                 output += f"• {error}\n"
+        
+        return output
+
+
+class SymbolTableFormatter:
+    """Format symbol table for display"""
+    
+    @staticmethod
+    def format(semantic_info):
+        """Format symbol table as detailed table"""
+        if not semantic_info:
+            return "No symbol table available."
+        
+        symbols = semantic_info.get('symbols', [])
+        
+        if not symbols:
+            return "Symbol table is empty.\n\nNo variables or functions declared."
+        
+        output = "Symbol Table (STM)\n"
+        output += "=" * 100 + "\n\n"
+        output += f"Total Symbols: {len(symbols)}\n\n"
+        
+        # Separate by type
+        functions = []
+        variables = []
+        parameters = []
+        
+        for symbol in symbols:
+            if isinstance(symbol, tuple) and len(symbol) == 2:
+                name, info = symbol
+                sym_type = info.get('type', 'unknown')
+                if sym_type == 'function':
+                    functions.append((name, info))
+                elif sym_type == 'parameter':
+                    parameters.append((name, info))
+                else:
+                    variables.append((name, info))
+        
+        # Display Functions
+        if functions:
+            output += "Functions:\n"
+            output += "-" * 100 + "\n"
+            output += f"{'Name':<20} {'Return Type':<15} {'Scope':<10} {'Line':<10} {'Used':<10}\n"
+            output += "-" * 100 + "\n"
+            for name, info in functions:
+                ret_type = info.get('return_type', info.get('value_type', 'void'))
+                scope = info.get('scope_level', 0)
+                line = info.get('line_number', '-')
+                used = '✓' if info.get('is_used', False) else '✗'
+                output += f"{name:<20} {ret_type:<15} {scope:<10} {str(line):<10} {used:<10}\n"
+            output += "\n"
+        
+        # Display Variables
+        if variables:
+            output += "Variables:\n"
+            output += "-" * 100 + "\n"
+            output += f"{'Name':<20} {'Type':<15} {'Scope':<10} {'Init Value':<25} {'Line':<10} {'Used':<10}\n"
+            output += "-" * 100 + "\n"
+            for name, info in variables:
+                val_type = info.get('value_type', 'unknown')
+                scope = info.get('scope_level', 0)
+                init_val = str(info.get('init_value', '-'))
+                if len(init_val) > 22:
+                    init_val = init_val[:19] + "..."
+                line = info.get('line_number', '-')
+                used = '✓' if info.get('is_used', False) else '✗'
+                output += f"{name:<20} {val_type:<15} {scope:<10} {init_val:<25} {str(line):<10} {used:<10}\n"
+            output += "\n"
+        
+        # Display Parameters
+        if parameters:
+            output += "Function Parameters:\n"
+            output += "-" * 100 + "\n"
+            output += f"{'Name':<20} {'Type':<15} {'Scope':<10} {'Line':<10} {'Used':<10}\n"
+            output += "-" * 100 + "\n"
+            for name, info in parameters:
+                val_type = info.get('value_type', 'unknown')
+                scope = info.get('scope_level', 0)
+                line = info.get('line_number', '-')
+                used = '✓' if info.get('is_used', False) else '✗'
+                output += f"{name:<20} {val_type:<15} {scope:<10} {str(line):<10} {used:<10}\n"
+            output += "\n"
+        
+        output += "\nLegend:\n"
+        output += "  Scope: 0 = Global, 1+ = Nested scope level\n"
+        output += "  Used:  ✓ = Referenced in code, ✗ = Declared but never used\n"
         
         return output
 

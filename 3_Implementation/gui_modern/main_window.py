@@ -14,7 +14,7 @@ from .output_sections import OutputSections
 from .phase_toolbar import PhaseToolbar
 from .phase_service import PhaseExecutionService
 from .formatters import (
-    TokensFormatter, ASTFormatter, SemanticFormatter,
+    TokensFormatter, ASTFormatter, SemanticFormatter, SymbolTableFormatter,
     IRFormatter, OptimizerFormatter, BytecodeFormatter, ErrorsFormatter
 )
 
@@ -364,6 +364,11 @@ print sum
             # Format and display semantic info
             formatted = SemanticFormatter.format(result['semantic_info'])
             self.output_sections.set_content('semantic', formatted, auto_expand=True)
+            
+            # Format and display symbol table
+            symbol_table_formatted = SymbolTableFormatter.format(result['semantic_info'])
+            self.output_sections.set_content('symbol_table', symbol_table_formatted, auto_expand=False)
+            
             self.status_bar.config(text="✓ Phase 3 Complete: Semantic Analysis")
         else:
             # Show error
@@ -475,6 +480,10 @@ print sum
         if 'check' in results and results['check']['success']:
             formatted = SemanticFormatter.format(results['check']['semantic_info'])
             self.output_sections.set_content('semantic', formatted, auto_expand=False)
+            
+            # Display symbol table
+            symbol_table_formatted = SymbolTableFormatter.format(results['check']['semantic_info'])
+            self.output_sections.set_content('symbol_table', symbol_table_formatted, auto_expand=False)
         
         if 'ir' in results and results['ir']['success']:
             formatted = IRFormatter.format(results['ir']['tac'])
