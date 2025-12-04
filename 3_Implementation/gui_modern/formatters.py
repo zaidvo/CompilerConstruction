@@ -229,29 +229,44 @@ class ErrorsFormatter:
     
     @staticmethod
     def format(errors):
-        """Format error list as table"""
+        """Format error list with full details"""
         if not errors:
             return "No errors detected. ✓"
         
         output = "Compilation Errors\n"
-        output += "=" * 80 + "\n\n"
+        output += "=" * 100 + "\n\n"
         output += f"Total Errors: {len(errors)}\n\n"
-        output += f"{'Phase':<15} {'Type':<15} {'Message':<35} {'Line':<6} {'Column':<6}\n"
-        output += "-" * 80 + "\n"
         
-        for error in errors:
+        for i, error in enumerate(errors, 1):
             if isinstance(error, dict):
                 phase = error.get('phase', '?')
                 err_type = error.get('type', '?')
                 message = error.get('message', '?')
-                line = error.get('line', '')
-                column = error.get('column', '')
+                line = error.get('line', 0)
+                column = error.get('column', 0)
                 
-                if len(message) > 32:
-                    message = message[:29] + "..."
+                output += f"Error #{i}:\n"
+                output += "-" * 100 + "\n"
+                output += f"  Phase:    {phase}\n"
+                output += f"  Type:     {err_type}\n"
+                output += f"  Location: "
+                if line > 0:
+                    output += f"Line {line}"
+                    if column > 0:
+                        output += f", Column {column}"
+                else:
+                    output += "Unknown"
+                output += "\n"
+                output += f"  Message:  {message}\n"
                 
-                output += f"{phase:<15} {err_type:<15} {message:<35} {str(line):<6} {str(column):<6}\n"
+                # Add suggestion if present in message
+                if "Suggestion:" in message or "Did you mean" in message:
+                    output += f"  💡 {message.split('(')[-1].strip(')')}\n"
+                
+                output += "\n"
             else:
-                output += f"{str(error)}\n"
+                output += f"Error #{i}:\n"
+                output += "-" * 100 + "\n"
+                output += f"  {str(error)}\n\n"
         
         return output

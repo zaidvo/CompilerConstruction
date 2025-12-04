@@ -30,6 +30,8 @@ class VarDeclNode(ASTNode):
     var_type: str  # int, long, float, string, boolean, array, matrix
     name: str
     value: ASTNode
+    line: int = 0
+    column: int = 0
 
 
 @dataclass
@@ -38,12 +40,16 @@ class AssignmentNode(ASTNode):
     name: str
     value: ASTNode
     index: Optional[ASTNode] = None  # For array assignment
+    line: int = 0
+    column: int = 0
 
 
 @dataclass
 class PrintNode(ASTNode):
     """Print statement: dikhao x"""
     expression: ASTNode
+    line: int = 0
+    column: int = 0
 
 
 @dataclass
@@ -139,6 +145,8 @@ class LiteralNode(ASTNode):
 class IdentifierNode(ASTNode):
     """Variable reference"""
     name: str
+    line: int = 0
+    column: int = 0
 
 
 @dataclass
@@ -159,3 +167,5 @@ class FuncCallNode(ASTNode):
     """Function call: func(arg1, arg2)"""
     name: str
     arguments: List[ASTNode]
+    line: int = 0
+    column: int = 0

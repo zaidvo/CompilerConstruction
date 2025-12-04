@@ -59,14 +59,39 @@ class SemanticAnalyzer:
         self.current_scope = self.global_scope
         self.in_function = False
         self.in_loop = False
-        self.errors: List[str] = []
+        self.errors: List[Dict[str, Any]] = []  # Store structured error info
         self.all_symbols = []  # Track all symbols across all scopes
+        self.current_node = None  # Track current node being analyzed
+        self.current_function = None  # Track current function name
         
         # No built-in functions - users must define everything themselves
     
-    def error(self, message: str):
-        """Record a semantic error"""
-        self.errors.append(f"Semantic error: {message}")
+    def error(self, message: str, node: ASTNode = None, suggestion: str = None):
+        """Record a semantic error with location information"""
+        # Use provided node or current node
+        error_node = node if node else self.current_node
+        
+        # Get line and column if available
+        line = getattr(error_node, 'line', 0) if error_node else 0
+        column = getattr(error_node, 'column', 0) if error_node else 0
+        
+        error_info = {
+            'message': message,
+            'line': line,
+            'column': column,
+            'suggestion': suggestion,
+            'context': self._get_error_context()
+        }
+        self.errors.append(error_info)
+    
+    def _get_error_context(self) -> str:
+        """Get context information for error message"""
+        context_parts = []
+        if self.current_function:
+            context_parts.append(f"in function '{self.current_function}'")
+        if self.in_loop:
+            context_parts.append("in loop")
+        return " ".join(context_parts) if context_parts else ""
     
     def enter_scope(self):
         """Enter a new scope"""
@@ -82,8 +107,22 @@ class SemanticAnalyzer:
         self.visit(node)
         
         if self.errors:
-            error_msg = "\n".join(self.errors)
-            raise Exception(f"Semantic analysis failed:\n{error_msg}")
+            error_messages = []
+            for i, err in enumerate(self.errors, 1):
+                msg = f"Error {i}:"
+                if err['line']:
+                    msg += f" Line {err['line']}"
+                    if err['column']:
+                        msg += f", Column {err['column']}"
+                msg += f"\n  {err['message']}"
+                if err.get('context'):
+                    msg += f" ({err['context']})"
+                if err.get('suggestion'):
+                    msg += f"\n  💡 Suggestion: {err['suggestion']}"
+                error_messages.append(msg)
+            
+            full_error = "Semantic analysis failed:\n\n" + "\n\n".join(error_messages)
+            raise Exception(full_error)
     
     def get_expr_string(self, node) -> str:
         """Convert expression node to readable string"""
@@ -120,13 +159,56 @@ class SemanticAnalyzer:
     
     def visit(self, node: ASTNode) -> str:
         """Visit a node and return its type"""
+        # Track current node for better error reporting
+        old_node = self.current_node
+        self.current_node = node
+        
         method_name = f'visit_{node.__class__.__name__}'
         visitor = getattr(self, method_name, self.generic_visit)
-        return visitor(node)
+        result = visitor(node)
+        
+        self.current_node = old_node
+        return result
     
     def generic_visit(self, node: ASTNode):
         """Default visitor for unhandled nodes"""
         raise Exception(f"No visit method for {node.__class__.__name__}")
+    
+    def _find_similar_name(self, wrong_name: str, candidates: List[str]) -> Optional[str]:
+        """Find the most similar name from candidates using simple distance"""
+        if not candidates:
+            return None
+        
+        def levenshtein_distance(s1: str, s2: str) -> int:
+            """Calculate edit distance between two strings"""
+            if len(s1) < len(s2):
+                return levenshtein_distance(s2, s1)
+            if len(s2) == 0:
+                return len(s1)
+            
+            previous_row = range(len(s2) + 1)
+            for i, c1 in enumerate(s1):
+                current_row = [i + 1]
+                for j, c2 in enumerate(s2):
+                    insertions = previous_row[j + 1] + 1
+                    deletions = current_row[j] + 1
+                    substitutions = previous_row[j] + (c1 != c2)
+                    current_row.append(min(insertions, deletions, substitutions))
+                previous_row = current_row
+            
+            return previous_row[-1]
+        
+        # Find candidate with minimum distance
+        best_match = None
+        min_distance = float('inf')
+        
+        for candidate in candidates:
+            distance = levenshtein_distance(wrong_name.lower(), candidate.lower())
+            if distance < min_distance and distance <= 3:  # Only suggest if distance <= 3
+                min_distance = distance
+                best_match = candidate
+        
+        return best_match
     
     # ========================================================================
     # STATEMENT VISITORS
@@ -142,7 +224,10 @@ class SemanticAnalyzer:
         """Visit variable declaration with type"""
         # Check if variable already exists in current scope
         if node.name in self.current_scope.symbols:
-            self.error(f"Variable '{node.name}' already declared in current scope")
+            prev_decl = self.current_scope.symbols[node.name]
+            line_info = f" (previously declared at line {prev_decl.get('line_number')})" if prev_decl.get('line_number') else ""
+            self.error(f"Variable '{node.name}' is already declared in this scope{line_info}", node, 
+                      "Use a different variable name or remove the duplicate declaration.")
             return 'void'
         
         # Get type of initialization expression
@@ -192,7 +277,12 @@ class SemanticAnalyzer:
         """Visit assignment"""
         # Check if variable exists
         if not self.current_scope.exists(node.name):
-            self.error(f"Variable '{node.name}' not declared")
+            # Find similar variable names for suggestions
+            all_vars = [name for name, info in self.all_symbols if info.get('type') == 'variable']
+            suggestion = self._find_similar_name(node.name, all_vars)
+            suggestion_msg = f"Did you mean '{suggestion}'?" if suggestion else "Declare the variable before assigning to it."
+            
+            self.error(f"Variable '{node.name}' is not declared", node, suggestion_msg)
             return 'void'
         
         # For array assignment, check index
@@ -320,7 +410,8 @@ class SemanticAnalyzer:
             'string': 'string',
             'boolean': 'boolean',
             'array': 'array',
-            'matrix': 'array'
+            'matrix': 'array',
+            'void': 'void'
         }
         
         return_value_type = type_map.get(node.return_type, 'unknown')
@@ -351,7 +442,9 @@ class SemanticAnalyzer:
         # Enter function scope
         self.enter_scope()
         old_in_function = self.in_function
+        old_function_name = self.current_function
         self.in_function = True
+        self.current_function = node.name
         
         # Define parameters with their types
         for param_type, param_name in node.parameters:
@@ -376,6 +469,7 @@ class SemanticAnalyzer:
         
         # Exit function scope
         self.in_function = old_in_function
+        self.current_function = old_function_name
         self.exit_scope()
         return 'void'
     
@@ -487,7 +581,12 @@ class SemanticAnalyzer:
         """Visit identifier"""
         symbol = self.current_scope.lookup(node.name)
         if not symbol:
-            self.error(f"Variable '{node.name}' not declared")
+            # Find similar variable names for suggestions
+            all_vars = [name for name, info in self.all_symbols if info.get('type') == 'variable']
+            suggestion = self._find_similar_name(node.name, all_vars)
+            suggestion_msg = f"Did you mean '{suggestion}'?" if suggestion else "Make sure to declare the variable before using it."
+            
+            self.error(f"Variable '{node.name}' is not declared", node, suggestion_msg)
             return 'unknown'
         
         # Mark variable as used in symbol table
@@ -524,7 +623,12 @@ class SemanticAnalyzer:
         # Check if function exists
         symbol = self.global_scope.lookup(node.name)
         if not symbol or symbol['type'] != 'function':
-            self.error(f"Function '{node.name}' not defined")
+            # Find similar function names for suggestions
+            all_funcs = [name for name, info in self.all_symbols if info.get('type') == 'function']
+            suggestion = self._find_similar_name(node.name, all_funcs)
+            suggestion_msg = f"Did you mean '{suggestion}'?" if suggestion else "Make sure to define the function before calling it."
+            
+            self.error(f"Function '{node.name}' is not defined", node, suggestion_msg)
             return 'number'  # Assume number to allow compilation to continue
         
         # Mark function as used in all_symbols list

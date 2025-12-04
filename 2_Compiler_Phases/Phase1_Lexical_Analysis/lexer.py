@@ -40,6 +40,7 @@ class TokenType(Enum):
     BOOLEAN = auto()        # boolean type
     ARRAY = auto()          # array type
     MATRIX = auto()         # matrix type
+    VOID = auto()           # void type (for functions)
     
     # Literals
     NUMBER = auto()
@@ -118,6 +119,7 @@ class Lexer:
         'boolean': TokenType.BOOLEAN,
         'array': TokenType.ARRAY,
         'matrix': TokenType.MATRIX,
+        'void': TokenType.VOID,
     }
     
     def __init__(self, source: str):

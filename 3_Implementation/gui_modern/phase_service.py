@@ -48,6 +48,30 @@ class PhaseExecutionService:
             'run': None
         }
     
+    def _extract_line_col(self, error_msg):
+        """Extract line and column numbers from error message"""
+        import re
+        # Try to find "line X, column Y" pattern
+        match = re.search(r'line (\d+),?\s*column (\d+)', error_msg, re.IGNORECASE)
+        if match:
+            return int(match.group(1)), int(match.group(2))
+        
+        # Try to find "Line X" pattern
+        match = re.search(r'line (\d+)', error_msg, re.IGNORECASE)
+        if match:
+            return int(match.group(1)), 0
+        
+        return 0, 0
+    
+    def _clean_error_message(self, error_msg):
+        """Clean up error message to remove redundant info"""
+        import re
+        # Remove "Syntax error at line X, column Y: " prefix if present
+        cleaned = re.sub(r'^(Syntax|Semantic|Lexical)\s+error\s+at\s+line\s+\d+,?\s*column\s+\d+:\s*', '', error_msg, flags=re.IGNORECASE)
+        # Remove "Semantic analysis failed:" prefix if present
+        cleaned = re.sub(r'^Semantic analysis failed:\s*', '', cleaned, flags=re.IGNORECASE)
+        return cleaned.strip()
+    
     def execute_phase_lex(self, source_code):
         """Phase 1: Lexical Analysis"""
         self.source_code = source_code
@@ -64,12 +88,13 @@ class PhaseExecutionService:
             }
         except Exception as e:
             error_msg = str(e)
+            line, column = self._extract_line_col(error_msg)
             self.errors.append({
                 'phase': 'Lexical',
                 'type': 'Error',
-                'message': error_msg,
-                'line': '',
-                'column': ''
+                'message': self._clean_error_message(error_msg),
+                'line': line,
+                'column': column
             })
             return {
                 'success': False,
@@ -93,12 +118,13 @@ class PhaseExecutionService:
             }
         except Exception as e:
             error_msg = str(e)
+            line, column = self._extract_line_col(error_msg)
             self.errors.append({
                 'phase': 'Syntax',
                 'type': 'Error',
-                'message': error_msg,
-                'line': '',
-                'column': ''
+                'message': self._clean_error_message(error_msg),
+                'line': line,
+                'column': column
             })
             return {
                 'success': False,
@@ -119,16 +145,6 @@ class PhaseExecutionService:
                 'errors': analyzer.errors if hasattr(analyzer, 'errors') else []
             }
             
-            if self.semantic_info['errors']:
-                for err in self.semantic_info['errors']:
-                    self.errors.append({
-                        'phase': 'Semantic',
-                        'type': 'Error',
-                        'message': str(err),
-                        'line': '',
-                        'column': ''
-                    })
-            
             self.phase_logs['check'] = f"Semantic analysis complete. {len(self.semantic_info['symbols'])} symbols analyzed."
             return {
                 'success': True,
@@ -137,13 +153,48 @@ class PhaseExecutionService:
             }
         except Exception as e:
             error_msg = str(e)
-            self.errors.append({
-                'phase': 'Semantic',
-                'type': 'Error',
-                'message': error_msg,
-                'line': '',
-                'column': ''
-            })
+            
+            # Try to extract structured errors from semantic analyzer
+            try:
+                import re
+                # Parse the formatted error message
+                error_blocks = error_msg.split('\n\n')
+                for block in error_blocks:
+                    if not block.strip() or 'Semantic analysis failed' in block:
+                        continue
+                    
+                    # Extract error details
+                    line_match = re.search(r'Line (\d+)', block)
+                    col_match = re.search(r'Column (\d+)', block)
+                    msg_match = re.search(r'\n  ([^\n]+?)(?:\n|$)', block)
+                    suggestion_match = re.search(r'💡 Suggestion: ([^\n]+)', block)
+                    
+                    message = msg_match.group(1) if msg_match else block.strip()
+                    line = int(line_match.group(1)) if line_match else 0
+                    column = int(col_match.group(1)) if col_match else 0
+                    
+                    # Format message with suggestion if available
+                    if suggestion_match:
+                        message += f" (Suggestion: {suggestion_match.group(1)})"
+                    
+                    self.errors.append({
+                        'phase': 'Semantic',
+                        'type': 'Error',
+                        'message': message,
+                        'line': line,
+                        'column': column
+                    })
+            except:
+                # Fallback: add the whole error message
+                line, column = self._extract_line_col(error_msg)
+                self.errors.append({
+                    'phase': 'Semantic',
+                    'type': 'Error',
+                    'message': self._clean_error_message(error_msg),
+                    'line': line,
+                    'column': column
+                })
+            
             return {
                 'success': False,
                 'error': error_msg,
@@ -166,12 +217,13 @@ class PhaseExecutionService:
             }
         except Exception as e:
             error_msg = str(e)
+            line, column = self._extract_line_col(error_msg)
             self.errors.append({
                 'phase': 'IR Generation',
                 'type': 'Error',
-                'message': error_msg,
-                'line': '',
-                'column': ''
+                'message': self._clean_error_message(error_msg),
+                'line': line,
+                'column': column
             })
             return {
                 'success': False,
@@ -201,12 +253,13 @@ class PhaseExecutionService:
             }
         except Exception as e:
             error_msg = str(e)
+            line, column = self._extract_line_col(error_msg)
             self.errors.append({
                 'phase': 'Optimization',
                 'type': 'Error',
-                'message': error_msg,
-                'line': '',
-                'column': ''
+                'message': self._clean_error_message(error_msg),
+                'line': line,
+                'column': column
             })
             return {
                 'success': False,
@@ -236,12 +289,13 @@ class PhaseExecutionService:
             }
         except Exception as e:
             error_msg = str(e)
+            line, column = self._extract_line_col(error_msg)
             self.errors.append({
                 'phase': 'Execution',
                 'type': 'Runtime Error',
-                'message': error_msg,
-                'line': '',
-                'column': ''
+                'message': self._clean_error_message(error_msg),
+                'line': line,
+                'column': column
             })
             return {
                 'success': False,
