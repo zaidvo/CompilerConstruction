@@ -301,7 +301,16 @@ class Parser:
         self.skip_newlines()
         
         body = []
+        # Add safety and EOF checks similar to other block parsers
+        iteration_count = 0
+        max_iterations = 1000
         while self.current_token and self.current_token.type != TokenType.END:
+            # If we hit EOF inside a while block, 'end' is missing
+            if self.current_token.type == TokenType.EOF:
+                self.error("Missing 'end' keyword for while loop")
+            iteration_count += 1
+            if iteration_count > max_iterations:
+                self.error("Infinite loop detected while parsing while loop. Check for missing 'end' keyword.")
             stmt = self.parse_statement()
             if stmt:
                 body.append(stmt)
