@@ -156,14 +156,14 @@ class ModernCompilerGUI:
             toolbar,
             textvariable=self.example_var,
             state='readonly',
-            width=25
+            width=40
         )
-        example_menu['values'] = [
-            'example.calc',
-            'test_for_loops.calc',
-            'test_matrix_operations.calc',
-            'test_simple_typed.calc'
-        ]
+        example_menu['values'] = (
+            '1. COMPLIANCE_TEST.calc - Full Feature Demo',
+            '2. test_simple_typed.calc - Basic Types & Variables',
+            '3. test_manual_math.calc - Math Operations',
+            '4. test_matrix_operations.calc - Matrix Functions'
+        )
         example_menu.bind('<<ComboboxSelected>>', self._on_example_selected)
         example_menu.pack(side=tk.LEFT, padx=5, pady=10)
         
@@ -285,11 +285,17 @@ print sum
             self.current_file = filename
             self.save_file()
     
-    def load_example(self, filename):
+    def load_example(self, display_name):
         """Load example file"""
         try:
+            # Extract filename from display name (e.g., "1. COMPLIANCE_TEST.calc - Full Feature Demo" -> "COMPLIANCE_TEST.calc")
+            if '. ' in display_name and ' - ' in display_name:
+                filename = display_name.split('. ')[1].split(' - ')[0]
+            else:
+                filename = display_name
+            
             project_root = Path(__file__).parent.parent.parent
-            example_path = project_root / '4_Submission' / 'test_cases' / filename
+            example_path = project_root / 'test' / 'test_cases' / filename
             
             if example_path.exists():
                 with open(example_path, 'r', encoding='utf-8') as f:
@@ -298,7 +304,7 @@ print sum
                 self.current_file = str(example_path)
                 self.output_sections.clear_all()
                 self.phase_service.reset()
-                self.status_bar.config(text=f"Ready | Example: {filename}")
+                self.status_bar.config(text=f"Ready | Loaded: {filename}")
             else:
                 messagebox.showerror("Error", f"Example file not found: {filename}")
         except Exception as e:

@@ -47,7 +47,7 @@ end
 ### Run All Tests:
 
 ```bash
-cd d:\University\CC\PROJECT\4_Submission\test_cases
+cd d:\University\CC\PROJECT\test\test_cases
 python run_all_tests.py
 ```
 
@@ -55,13 +55,13 @@ python run_all_tests.py
 
 ```bash
 cd d:\University\CC\PROJECT
-python 3_Implementation\main.py 4_Submission\test_cases\example.calc
+python gui\main.py test\test_cases\example.calc
 ```
 
 ### Run Compliance Test:
 
 ```bash
-python 3_Implementation\main.py 4_Submission\test_cases\COMPLIANCE_TEST.calc
+python gui\main.py test\test_cases\COMPLIANCE_TEST.calc
 ```
 
 ## 📝 Test Descriptions

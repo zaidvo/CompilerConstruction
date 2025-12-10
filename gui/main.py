@@ -9,12 +9,12 @@ import argparse
 from pathlib import Path
 
 # Add parent directories to path
-sys.path.insert(0, str(Path(__file__).parent.parent / '2_Compiler_Phases' / 'Phase1_Lexical_Analysis'))
-sys.path.insert(0, str(Path(__file__).parent.parent / '2_Compiler_Phases' / 'Phase2_Syntax_Analysis'))
-sys.path.insert(0, str(Path(__file__).parent.parent / '2_Compiler_Phases' / 'Phase3_Semantic_Analysis'))
-sys.path.insert(0, str(Path(__file__).parent.parent / '2_Compiler_Phases' / 'Phase4_Intermediate_Code'))
-sys.path.insert(0, str(Path(__file__).parent.parent / '2_Compiler_Phases' / 'Phase5_Optimization'))
-sys.path.insert(0, str(Path(__file__).parent.parent / '2_Compiler_Phases' / 'Phase6_Code_Generation'))
+sys.path.insert(0, str(Path(__file__).parent.parent / 'Compiler' / 'Phase1_Lexical_Analysis'))
+sys.path.insert(0, str(Path(__file__).parent.parent / 'Compiler' / 'Phase2_Syntax_Analysis'))
+sys.path.insert(0, str(Path(__file__).parent.parent / 'Compiler' / 'Phase3_Semantic_Analysis'))
+sys.path.insert(0, str(Path(__file__).parent.parent / 'Compiler' / 'Phase4_Intermediate_Code'))
+sys.path.insert(0, str(Path(__file__).parent.parent / 'Compiler' / 'Phase5_Optimization'))
+sys.path.insert(0, str(Path(__file__).parent.parent / 'Compiler' / 'Phase6_Code_Generation'))
 
 from lexer import Lexer
 from parser import Parser

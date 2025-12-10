@@ -238,8 +238,14 @@ class Parser:
         while self.current_token and self.current_token.type not in (TokenType.ELSE, TokenType.END):
             stmt = self.parse_statement()
             if stmt:
-                then_block.append(stmt)
+                if isinstance(stmt, list):
+                    then_block.extend(stmt)
+                else:
+                    then_block.append(stmt)
             self.skip_newlines()
+            # Safety check
+            if self.current_token and self.current_token.type in (TokenType.ELSE, TokenType.END):
+                break
         
         else_block = None
         if self.current_token and self.current_token.type == TokenType.ELSE:
@@ -253,8 +259,14 @@ class Parser:
             while self.current_token and self.current_token.type != TokenType.END:
                 stmt = self.parse_statement()
                 if stmt:
-                    else_block.append(stmt)
+                    if isinstance(stmt, list):
+                        else_block.extend(stmt)
+                    else:
+                        else_block.append(stmt)
                 self.skip_newlines()
+                # Safety check
+                if self.current_token and self.current_token.type == TokenType.END:
+                    break
         
         self.expect(TokenType.END)
         return IfNode(condition, then_block, else_block)
@@ -271,8 +283,14 @@ class Parser:
         while self.current_token and self.current_token.type != TokenType.END:
             stmt = self.parse_statement()
             if stmt:
-                body.append(stmt)
+                if isinstance(stmt, list):
+                    body.extend(stmt)
+                else:
+                    body.append(stmt)
             self.skip_newlines()
+            # Safety check
+            if self.current_token and self.current_token.type == TokenType.END:
+                break
         
         self.expect(TokenType.END)
         return RepeatNode(count, body)
@@ -288,8 +306,14 @@ class Parser:
         while self.current_token and self.current_token.type != TokenType.END:
             stmt = self.parse_statement()
             if stmt:
-                body.append(stmt)
+                if isinstance(stmt, list):
+                    body.extend(stmt)
+                else:
+                    body.append(stmt)
             self.skip_newlines()
+            # Safety check
+            if self.current_token and self.current_token.type == TokenType.END:
+                break
         
         self.expect(TokenType.END)
         return WhileNode(condition, body)
@@ -380,8 +404,15 @@ class Parser:
         while self.current_token and self.current_token.type != TokenType.END:
             stmt = self.parse_statement()
             if stmt:
-                body.append(stmt)
+                if isinstance(stmt, list):
+                    body.extend(stmt)
+                else:
+                    body.append(stmt)
             self.skip_newlines()
+            
+            # Safety check: prevent infinite loop if token doesn't advance
+            if self.current_token and self.current_token.type == TokenType.END:
+                break
         
         self.expect(TokenType.END)
         return FuncDefNode(return_type, name_token.value, parameters, body)
