@@ -141,7 +141,7 @@ class Parser:
             # No initialization - use default value based on type
             value = self._get_default_value(var_type)
         
-        declarations.append(VarDeclNode(var_type, name_token.value, value))
+        declarations.append(VarDeclNode(var_type, name_token.value, value, name_token.line, name_token.column))
         
         # Check for additional declarations separated by commas
         while self.current_token and self.current_token.type == TokenType.COMMA:
@@ -157,7 +157,7 @@ class Parser:
                 # No initialization - use default value based on type
                 value = self._get_default_value(var_type)
             
-            declarations.append(VarDeclNode(var_type, name_token.value, value))
+            declarations.append(VarDeclNode(var_type, name_token.value, value, name_token.line, name_token.column))
         
         # Return single declaration or list
         if len(declarations) == 1:
@@ -191,14 +191,15 @@ class Parser:
             self.expect(TokenType.RBRACKET)
             self.expect(TokenType.ASSIGN)
             value = self.parse_expression()
-            return AssignmentNode(name_token.value, value, index)
+            return AssignmentNode(name_token.value, value, index, name_token.line, name_token.column)
         else:
             self.expect(TokenType.ASSIGN)
             value = self.parse_expression()
-            return AssignmentNode(name_token.value, value)
+            return AssignmentNode(name_token.value, value, None, name_token.line, name_token.column)
     
     def parse_print(self) -> PrintNode:
         """Parse print statement: print expr OR print x, y, z"""
+        print_token = self.current_token
         self.expect(TokenType.PRINT)
         
         expressions = []
@@ -214,10 +215,12 @@ class Parser:
             expressions.append(expr)
         
         # Return single print or multi-print
+        line = print_token.line if print_token else 0
+        column = print_token.column if print_token else 0
         if len(expressions) == 1:
-            return PrintNode(expressions[0])
+            return PrintNode(expressions[0], line, column)
         else:
-            return PrintNode(expressions)
+            return PrintNode(expressions, line, column)
     
     def parse_input(self) -> InputNode:
         """Parse input statement: input x"""
@@ -236,6 +239,8 @@ class Parser:
         
         then_block = []
         while self.current_token and self.current_token.type not in (TokenType.ELSE, TokenType.END):
+            if self.current_token.type == TokenType.EOF:
+                self.error("Missing 'end' or 'else' keyword for if statement")
             stmt = self.parse_statement()
             if stmt:
                 if isinstance(stmt, list):
@@ -257,6 +262,8 @@ class Parser:
             
             else_block = []
             while self.current_token and self.current_token.type != TokenType.END:
+                if self.current_token.type == TokenType.EOF:
+                    self.error("Missing 'end' keyword for if-else statement")
                 stmt = self.parse_statement()
                 if stmt:
                     if isinstance(stmt, list):
@@ -268,6 +275,8 @@ class Parser:
                 if self.current_token and self.current_token.type == TokenType.END:
                     break
         
+        if not self.current_token or self.current_token.type == TokenType.EOF:
+            self.error("Missing 'end' keyword for if statement")
         self.expect(TokenType.END)
         return IfNode(condition, then_block, else_block)
     
@@ -280,7 +289,14 @@ class Parser:
         self.skip_newlines()
         
         body = []
+        iteration_count = 0
+        max_iterations = 1000
         while self.current_token and self.current_token.type != TokenType.END:
+            if self.current_token.type == TokenType.EOF:
+                self.error("Missing 'end' keyword for repeat loop")
+            iteration_count += 1
+            if iteration_count > max_iterations:
+                self.error("Infinite loop detected while parsing repeat loop. Check for missing 'end' keyword.")
             stmt = self.parse_statement()
             if stmt:
                 if isinstance(stmt, list):
@@ -303,7 +319,16 @@ class Parser:
         self.skip_newlines()
         
         body = []
+        # Add safety and EOF checks similar to other block parsers
+        iteration_count = 0
+        max_iterations = 1000
         while self.current_token and self.current_token.type != TokenType.END:
+            # If we hit EOF inside a while block, 'end' is missing
+            if self.current_token.type == TokenType.EOF:
+                self.error("Missing 'end' keyword for while loop")
+            iteration_count += 1
+            if iteration_count > max_iterations:
+                self.error("Infinite loop detected while parsing while loop. Check for missing 'end' keyword.")
             stmt = self.parse_statement()
             if stmt:
                 if isinstance(stmt, list):
@@ -352,7 +377,14 @@ class Parser:
         
         # Parse body
         body = []
+        iteration_count = 0
+        max_iterations = 1000
         while self.current_token and self.current_token.type != TokenType.END:
+            if self.current_token.type == TokenType.EOF:
+                self.error("Missing 'end' keyword for for loop")
+            iteration_count += 1
+            if iteration_count > max_iterations:
+                self.error("Infinite loop detected while parsing for loop. Check for missing 'end' keyword.")
             stmt = self.parse_statement()
             if stmt:
                 body.append(stmt)
@@ -368,7 +400,7 @@ class Parser:
         # Parse return type
         if self.current_token.type in (TokenType.INT, TokenType.LONG, TokenType.FLOAT,
                                        TokenType.STRING_TYPE, TokenType.BOOLEAN,
-                                       TokenType.ARRAY, TokenType.MATRIX):
+                                       TokenType.ARRAY, TokenType.MATRIX, TokenType.VOID):
             return_type = self.current_token.value
             self.advance()
         else:
@@ -401,7 +433,13 @@ class Parser:
         self.skip_newlines()
         
         body = []
+        loop_safety = 0
         while self.current_token and self.current_token.type != TokenType.END:
+            if self.current_token.type == TokenType.EOF:
+                self.error(f"Missing 'end' keyword for function '{name_token.value}'. Check for missing 'end' in if/else blocks.")
+            loop_safety += 1
+            if loop_safety > 500:
+                self.error(f"Parser stuck in infinite loop in function '{name_token.value}'. Likely missing 'end' keyword.")
             stmt = self.parse_statement()
             if stmt:
                 if isinstance(stmt, list):
@@ -583,6 +621,9 @@ class Parser:
             
             # Function call
             if self.current_token and self.current_token.type == TokenType.LPAREN:
+                # Get line/column from the identifier token we just consumed
+                line = self.tokens[self.pos - 1].line if self.pos > 0 else 0
+                column = self.tokens[self.pos - 1].column if self.pos > 0 else 0
                 self.expect(TokenType.LPAREN)
                 arguments = []
                 if self.current_token and self.current_token.type != TokenType.RPAREN:
@@ -591,7 +632,7 @@ class Parser:
                         self.advance()
                         arguments.append(self.parse_expression())
                 self.expect(TokenType.RPAREN)
-                return FuncCallNode(name, arguments)
+                return FuncCallNode(name, arguments, line, column)
             
             # Array access
             elif self.current_token and self.current_token.type == TokenType.LBRACKET:
@@ -602,7 +643,10 @@ class Parser:
             
             # Simple identifier
             else:
-                return IdentifierNode(name)
+                # Get line/column from the token we just consumed
+                line = self.tokens[self.pos - 1].line if self.pos > 0 else 0
+                column = self.tokens[self.pos - 1].column if self.pos > 0 else 0
+                return IdentifierNode(name, line, column)
         
         # Array literal
         elif token_type == TokenType.LBRACKET:

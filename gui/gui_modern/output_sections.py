@@ -156,6 +156,12 @@ class OutputSections(tk.Frame):
                 'color': ModernTheme.PHASE_CHECK
             },
             {
+                'key': 'symbol_table',
+                'title': 'Symbol Table (STM)',
+                'emoji': '📋',
+                'color': '#9B59B6'
+            },
+            {
                 'key': 'ir',
                 'title': 'IR Code (TAC)',
                 'emoji': '⚙',
